@@ -1,9 +1,0 @@
-.env
-venv/
-.venv/
-__pycache__/
-*.pyc
-*.pyo
-*.log
-*.pid
-subscriptions.sqlite3
