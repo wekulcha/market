@@ -1,0 +1,185 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kulcha-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kulcha}
+      POSTGRES_USER: ${POSTGRES_USER:-kulcha}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kulcha}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kulcha} -d ${POSTGRES_DB:-kulcha}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: .
+      dockerfile: deploy/docker/backend.Dockerfile
+    container_name: kulcha-backend
+    restart: unless-stopped
+    environment:
+      KULCHA_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-kulcha}:${POSTGRES_PASSWORD:-kulcha}@postgres:5432/${POSTGRES_DB:-kulcha}
+      KULCHA_USER_BOT_TOKEN: ${KULCHA_USER_BOT_TOKEN:-}
+      KULCHA_ADMIN_BOT_TOKEN: ${KULCHA_ADMIN_BOT_TOKEN:-}
+      KULCHA_AUTH_ACCESS_SECRET: ${KULCHA_AUTH_ACCESS_SECRET:-}
+      KULCHA_AUTH_ACCESS_TTL_MINUTES: ${KULCHA_AUTH_ACCESS_TTL_MINUTES:-15}
+      KULCHA_AUTH_REFRESH_TTL_DAYS: ${KULCHA_AUTH_REFRESH_TTL_DAYS:-30}
+      KULCHA_AUTH_COOKIE_DOMAIN: ${KULCHA_AUTH_COOKIE_DOMAIN:-}
+      KULCHA_AUTH_COOKIE_SECURE: ${KULCHA_AUTH_COOKIE_SECURE:-true}
+      KULCHA_SUPERADMIN_BOT_TOKEN: ${KULCHA_SUPERADMIN_BOT_TOKEN:-}
+      KULCHA_SUPERADMIN_ALLOWED_IDS: ${KULCHA_SUPERADMIN_ALLOWED_IDS:-}
+      # Должен совпадать с admin_bot; для продакшена задайте в .env своё значение.
+      KULCHA_INTERNAL_API_SECRET: ${KULCHA_INTERNAL_API_SECRET:-kulcha-local-internal-api-secret}
+      KULCHA_BOT_API_SECRET: ${KULCHA_BOT_API_SECRET:-}
+      KULCHA_OBJECT_STORAGE_ENDPOINT: ${KULCHA_OBJECT_STORAGE_ENDPOINT:-https://storage.yandexcloud.net}
+      KULCHA_OBJECT_STORAGE_REGION: ${KULCHA_OBJECT_STORAGE_REGION:-ru-central1}
+      KULCHA_OBJECT_STORAGE_BUCKET: ${KULCHA_OBJECT_STORAGE_BUCKET:-kulcha-main-menu-items}
+      KULCHA_OBJECT_STORAGE_ACCESS_KEY_ID: ${KULCHA_OBJECT_STORAGE_ACCESS_KEY_ID:-}
+      KULCHA_OBJECT_STORAGE_SECRET_ACCESS_KEY: ${KULCHA_OBJECT_STORAGE_SECRET_ACCESS_KEY:-}
+      KULCHA_OBJECT_STORAGE_PUBLIC_BASE_URL: ${KULCHA_OBJECT_STORAGE_PUBLIC_BASE_URL:-https://kulcha-main-menu-items.storage.yandexcloud.net}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  user_panel:
+    build:
+      context: .
+      dockerfile: deploy/docker/user_panel.Dockerfile
+      args:
+        VITE_API_URL: ${PUBLIC_API_URL:-https://api.wekulcha.ru/api/v1}
+    container_name: kulcha-user-panel
+    restart: unless-stopped
+    expose:
+      - "80"
+
+  admin_panel:
+    build:
+      context: .
+      dockerfile: deploy/docker/admin_panel.Dockerfile
+      args:
+        VITE_API_URL: ${PUBLIC_API_URL:-https://api.wekulcha.ru/api/v1}
+    container_name: kulcha-admin-panel
+    restart: unless-stopped
+    expose:
+      - "80"
+
+  superadmin_panel:
+    build:
+      context: .
+      dockerfile: deploy/docker/superadmin_panel.Dockerfile
+      args:
+        VITE_API_URL: ${PUBLIC_API_URL:-https://api.wekulcha.ru/api/v1}
+    container_name: kulcha-superadmin-panel
+    restart: unless-stopped
+    expose:
+      - "80"
+
+  user_bot:
+    build:
+      context: .
+      dockerfile: deploy/docker/user_bot.Dockerfile
+    container_name: kulcha-user-bot
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      KULCHA_USER_BOT_TOKEN: ${KULCHA_USER_BOT_TOKEN:-}
+      KULCHA_BOT_API_SECRET: ${KULCHA_BOT_API_SECRET:-}
+      KULCHA_API_BASE: http://backend:8000/api/v1
+      KULCHA_USER_MINI_APP_URL: https://${USER_DOMAIN:-app.wekulcha.ru}
+      KULCHA_USER_MINI_APP_VERSION: ${KULCHA_USER_MINI_APP_VERSION:-}
+      KULCHA_SUPPORT_LINK: ${KULCHA_SUPPORT_LINK:-https://t.me/wekulcha_sup_bot}
+
+  admin_bot:
+    build:
+      context: .
+      dockerfile: deploy/docker/admin_bot.Dockerfile
+    container_name: kulcha-admin-bot
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      KULCHA_ADMIN_BOT_TOKEN: ${KULCHA_ADMIN_BOT_TOKEN:-}
+      # Должен совпадать с admin_bot; для продакшена задайте в .env своё значение.
+      KULCHA_INTERNAL_API_SECRET: ${KULCHA_INTERNAL_API_SECRET:-kulcha-local-internal-api-secret}
+      KULCHA_API_BASE: http://backend:8000/api/v1
+      KULCHA_ADMIN_MINI_APP_URL: https://${ADMIN_DOMAIN:-admin.wekulcha.online}
+      KULCHA_SUPPORT_LINK: ${KULCHA_SUPPORT_LINK:-https://t.me/wekulcha_sup_bot}
+
+  support_bot:
+    build:
+      context: .
+      dockerfile: deploy/docker/support_bot.Dockerfile
+    container_name: kulcha-support-bot
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      KULCHA_SUPPORT_BOT_TOKEN: ${KULCHA_SUPPORT_BOT_TOKEN:-}
+      KULCHA_INTERNAL_API_SECRET: ${KULCHA_INTERNAL_API_SECRET:-kulcha-local-internal-api-secret}
+      KULCHA_API_BASE: http://backend:8000/api/v1
+      KULCHA_SUPPORT_GROUP_ID: ${KULCHA_SUPPORT_GROUP_ID:--1003920291106}
+
+  channel_subscriptions_bot:
+    build:
+      context: .
+      dockerfile: deploy/docker/channel_subscriptions_bot.Dockerfile
+    container_name: kulcha-channel-subscriptions-bot
+    restart: unless-stopped
+    environment:
+      KULCHA_CHANNEL_SUBSCRIPTIONS_BOT_TOKEN: ${KULCHA_CHANNEL_SUBSCRIPTIONS_BOT_TOKEN:-8653190572:AAGMbnk-FGktiB5iIMMEh9kKPMs7xd4Q0TA}
+      KULCHA_CHANNEL_SUBSCRIPTIONS_ADMIN_ID: ${KULCHA_CHANNEL_SUBSCRIPTIONS_ADMIN_ID:-1038155901}
+      KULCHA_CHANNEL_SUBSCRIPTIONS_DB: /data/subscriptions.sqlite3
+      KULCHA_CHANNEL_SUBSCRIPTIONS_TZ: ${KULCHA_CHANNEL_SUBSCRIPTIONS_TZ:-Europe/Moscow}
+    volumes:
+      - channel_subscriptions_bot_data:/data
+
+  superadmin_bot:
+    build:
+      context: .
+      dockerfile: deploy/docker/superadmin_bot.Dockerfile
+    container_name: kulcha-superadmin-bot
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      KULCHA_SUPERADMIN_BOT_TOKEN: ${KULCHA_SUPERADMIN_BOT_TOKEN:-}
+      KULCHA_API_BASE: http://backend:8000/api/v1
+      KULCHA_SUPERADMIN_ALLOWED_IDS: ${KULCHA_SUPERADMIN_ALLOWED_IDS:-}
+      KULCHA_SUPERADMIN_MINI_APP_URL: https://${SUPERADMIN_DOMAIN:-superadmin.wekulcha.online}
+      KULCHA_SUPPORT_LINK: ${KULCHA_SUPPORT_LINK:-https://t.me/wekulcha_sup_bot}
+
+  gateway:
+    image: caddy:2.8-alpine
+    container_name: kulcha-gateway
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - user_panel
+      - admin_panel
+      - superadmin_panel
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:-admin@wekulcha.ru}
+      API_DOMAIN: ${API_DOMAIN:-api.wekulcha.ru}
+      USER_DOMAIN: ${USER_DOMAIN:-app.wekulcha.ru}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:-admin.wekulcha.online}
+      SUPERADMIN_DOMAIN: ${SUPERADMIN_DOMAIN:-superadmin.wekulcha.online}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  postgres_data:
+  channel_subscriptions_bot_data:
+  caddy_data:
+  caddy_config:
