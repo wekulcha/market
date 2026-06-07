@@ -1,0 +1,26 @@
+# Add these sites to the existing Kulcha Caddyfile when Kulcha and Kulcha Market
+# run on the same VPS and the Kulcha gateway already owns public ports 80/443.
+#
+# The existing gateway container must also be connected to the market compose
+# network, for example:
+#   docker network connect kulcha-market_default kulcha-gateway || true
+
+market.wekulcha.ru {
+    encode zstd gzip
+    reverse_proxy kulcha-market-user-panel:80
+}
+
+apimarket.wekulcha.ru {
+    encode zstd gzip
+    reverse_proxy kulcha-market-backend:8000
+}
+
+adminmarket.wekulcha.online {
+    encode zstd gzip
+    reverse_proxy kulcha-market-admin-panel:80
+}
+
+supadmin.wekulcha.online {
+    encode zstd gzip
+    reverse_proxy kulcha-market-superadmin-panel:80
+}
