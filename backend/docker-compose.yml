@@ -1,21 +1,21 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: kulcha-postgres
+    container_name: kulcha-market-local-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: kulcha
-      POSTGRES_USER: kulcha
-      POSTGRES_PASSWORD: kulcha
+      POSTGRES_DB: kulcha_market
+      POSTGRES_USER: kulcha_market
+      POSTGRES_PASSWORD: kulcha_market
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - kulcha-postgres-data:/var/lib/postgresql/data
+      - kulcha-market-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kulcha -d kulcha"]
+      test: ["CMD-SHELL", "pg_isready -U kulcha_market -d kulcha_market"]
       interval: 5s
       timeout: 5s
       retries: 20
 
 volumes:
-  kulcha-postgres-data:
+  kulcha-market-postgres-data:

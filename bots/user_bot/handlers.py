@@ -32,7 +32,7 @@ router = Router()
 def _bot_headers() -> dict:
     h = {}
     if BOT_API_SECRET:
-        h["X-Kulcha-Bot-Secret"] = BOT_API_SECRET
+        h["X-Market-Bot-Secret"] = BOT_API_SECRET
     return h
 
 
@@ -127,7 +127,7 @@ async def order_status(message: Message):
     if not BOT_API_SECRET:
         await message.answer(
             "<b>Статус заказа</b>\n━━━━━━━━━━━━━━\n"
-            "Сервис временно недоступен (не задан <code>KULCHA_BOT_API_SECRET</code> на сервере бота)."
+            "Сервис временно недоступен (не задан <code>MARKET_BOT_API_SECRET</code> на сервере бота)."
         )
         return
     uid = message.from_user.id
@@ -135,7 +135,7 @@ async def order_status(message: Message):
         r = await client.get(
             f"{API_BASE}/orders",
             params={"userId": uid},
-            headers={"X-Kulcha-Bot-Secret": BOT_API_SECRET},
+            headers={"X-Market-Bot-Secret": BOT_API_SECRET},
         )
     if r.status_code != 200:
         await message.answer("Не удалось загрузить заказы. Попробуйте позже.")

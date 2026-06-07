@@ -17,7 +17,7 @@ router = Router()
 def _internal_headers() -> dict:
     if not INTERNAL_API_SECRET:
         return {}
-    return {"X-Kulcha-Internal-Secret": INTERNAL_API_SECRET}
+    return {"X-Market-Internal-Secret": INTERNAL_API_SECRET}
 
 
 def allowed(user_id: int) -> bool:

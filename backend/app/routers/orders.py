@@ -200,8 +200,8 @@ async def get_all(
     authorization: str | None = Header(None, alias="Authorization"),
     x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
     x_init_data: str | None = Header(None, alias="X-Init-Data"),
-    x_kulcha_bot_auth: str | None = Header(None, alias="X-Kulcha-Bot-Auth"),
-    x_kulcha_bot_secret: str | None = Header(None, alias="X-Kulcha-Bot-Secret"),
+    x_kulcha_bot_auth: str | None = Header(None, alias="X-Market-Bot-Auth"),
+    x_kulcha_bot_secret: str | None = Header(None, alias="X-Market-Bot-Secret"),
 ):
     settings = get_settings()
     init_data = (x_telegram_init_data or x_init_data or "").strip()
@@ -282,7 +282,7 @@ async def get_today_summary(
     db: AsyncSession = Depends(get_db),
     x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
     x_init_data: str | None = Header(None, alias="X-Init-Data"),
-    x_kulcha_bot_auth: str | None = Header(None, alias="X-Kulcha-Bot-Auth"),
+    x_kulcha_bot_auth: str | None = Header(None, alias="X-Market-Bot-Auth"),
 ):
     init_data = (x_telegram_init_data or x_init_data or "").strip()
     actor = await _require_admin_or_bot_user(db, init_data, x_kulcha_bot_auth)
@@ -443,8 +443,8 @@ async def get_by_id(
     authorization: str | None = Header(None, alias="Authorization"),
     x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
     x_init_data: str | None = Header(None, alias="X-Init-Data"),
-    x_kulcha_bot_auth: str | None = Header(None, alias="X-Kulcha-Bot-Auth"),
-    x_kulcha_internal_secret: str | None = Header(None, alias="X-Kulcha-Internal-Secret"),
+    x_kulcha_bot_auth: str | None = Header(None, alias="X-Market-Bot-Auth"),
+    x_kulcha_internal_secret: str | None = Header(None, alias="X-Market-Internal-Secret"),
 ):
     result = await db.execute(
         select(Order)
@@ -490,7 +490,7 @@ async def checkout(
     authorization: str | None = Header(None, alias="Authorization"),
     x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
     x_init_data: str | None = Header(None, alias="X-Init-Data"),
-    x_kulcha_bot_auth: str | None = Header(None, alias="X-Kulcha-Bot-Auth"),
+    x_kulcha_bot_auth: str | None = Header(None, alias="X-Market-Bot-Auth"),
 ):
     init_data = (x_telegram_init_data or x_init_data or "").strip()
     customer = await _require_customer_user(db, authorization, init_data, x_kulcha_bot_auth)
@@ -639,7 +639,7 @@ async def cancel_my_order(
     authorization: str | None = Header(None, alias="Authorization"),
     x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
     x_init_data: str | None = Header(None, alias="X-Init-Data"),
-    x_kulcha_bot_auth: str | None = Header(None, alias="X-Kulcha-Bot-Auth"),
+    x_kulcha_bot_auth: str | None = Header(None, alias="X-Market-Bot-Auth"),
 ):
     init_data = (x_telegram_init_data or x_init_data or "").strip()
     customer = await _require_customer_user(db, authorization, init_data, x_kulcha_bot_auth)
@@ -664,7 +664,7 @@ async def patch_paid(
     body: OrderPaidPatchDto,
     db: AsyncSession = Depends(get_db),
     x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
-    x_kulcha_internal_secret: str | None = Header(None, alias="X-Kulcha-Internal-Secret"),
+    x_kulcha_internal_secret: str | None = Header(None, alias="X-Market-Internal-Secret"),
 ):
     result = await db.execute(
         select(Order)
@@ -693,7 +693,7 @@ async def patch_status(
     order_id: int,
     body: OrderStatusPatchDto,
     db: AsyncSession = Depends(get_db),
-    x_kulcha_internal_secret: str = Header(..., alias="X-Kulcha-Internal-Secret"),
+    x_kulcha_internal_secret: str = Header(..., alias="X-Market-Internal-Secret"),
 ):
     settings = get_settings()
     if not settings.internal_api_secret:

@@ -115,7 +115,7 @@ async def get_by_id(
     authorization: str | None = Header(None, alias="Authorization"),
     x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
     x_init_data: str | None = Header(None, alias="X-Init-Data"),
-    x_kulcha_bot_auth: str | None = Header(None, alias="X-Kulcha-Bot-Auth"),
+    x_kulcha_bot_auth: str | None = Header(None, alias="X-Market-Bot-Auth"),
 ):
     bearer_user = await get_user_from_bearer(db, authorization)
     if bearer_user:
@@ -164,7 +164,7 @@ async def get_my_restaurants(
 async def create_user(
     dto: UserDto,
     db: AsyncSession = Depends(get_db),
-    x_kulcha_bot_secret: str | None = Header(None, alias="X-Kulcha-Bot-Secret"),
+    x_kulcha_bot_secret: str | None = Header(None, alias="X-Market-Bot-Secret"),
 ):
     settings = get_settings()
     want = settings.bot_api_secret

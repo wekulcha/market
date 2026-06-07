@@ -16,7 +16,7 @@ from app.config import get_settings
 from app.models.refresh_session import RefreshSession
 from app.models.user import User
 
-REFRESH_COOKIE_NAME = "kulcha_refresh_token"
+REFRESH_COOKIE_NAME = "kulcha_market_refresh_token"
 
 
 def utcnow() -> datetime:

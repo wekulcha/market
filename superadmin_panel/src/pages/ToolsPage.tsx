@@ -38,11 +38,11 @@ export function ToolsPage() {
           <p className="font-medium text-slate-700 mb-1">Напоминание по секретам</p>
           <ul className="list-disc pl-4 space-y-1">
             <li>
-              <code className="text-[11px] bg-slate-100 px-1 rounded">KULCHA_INTERNAL_API_SECRET</code> — одинаковый в
+              <code className="text-[11px] bg-slate-100 px-1 rounded">MARKET_INTERNAL_API_SECRET</code> — одинаковый в
               backend и admin_bot (кнопки статуса заказа в Telegram).
             </li>
             <li>
-              <code className="text-[11px] bg-slate-100 px-1 rounded">KULCHA_BOT_API_SECRET</code> — backend и user_bot.
+              <code className="text-[11px] bg-slate-100 px-1 rounded">MARKET_BOT_API_SECRET</code> — backend и user_bot.
             </li>
           </ul>
         </div>

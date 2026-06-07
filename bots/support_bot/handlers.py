@@ -20,7 +20,7 @@ _TICKET_RE = re.compile(r"#T(\d+)")
 def _headers() -> dict[str, str]:
     h: dict[str, str] = {}
     if INTERNAL_SECRET:
-        h["X-Kulcha-Internal-Secret"] = INTERNAL_SECRET
+        h["X-Market-Internal-Secret"] = INTERNAL_SECRET
     return h
 
 

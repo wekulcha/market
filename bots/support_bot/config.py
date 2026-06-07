@@ -11,8 +11,8 @@ def _int_env(key: str, default: int) -> int:
         return default
 
 
-BOT_TOKEN = os.environ.get("KULCHA_SUPPORT_BOT_TOKEN", "")
-API_BASE = os.environ.get("KULCHA_API_BASE", "http://localhost:8000/api/v1").rstrip("/")
-INTERNAL_SECRET = os.environ.get("KULCHA_INTERNAL_API_SECRET", "")
+BOT_TOKEN = os.environ.get("MARKET_SUPPORT_BOT_TOKEN", "")
+API_BASE = os.environ.get("MARKET_API_BASE", "http://localhost:8000/api/v1").rstrip("/")
+INTERNAL_SECRET = os.environ.get("MARKET_INTERNAL_API_SECRET", "")
 # ID группы: для супергрупп обычно -100XXXXXXXXXX
-SUPPORT_GROUP_ID = _int_env("KULCHA_SUPPORT_GROUP_ID", -1003920291106)
+SUPPORT_GROUP_ID = _int_env("MARKET_SUPPORT_GROUP_ID", 0)

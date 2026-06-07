@@ -170,7 +170,7 @@ async def today_summary(message: Message):
         async with httpx.AsyncClient(timeout=45.0) as client:
             response = await client.get(
                 f"{API_BASE}/orders/today-summary",
-                headers={"X-Kulcha-Bot-Auth": token},
+                headers={"X-Market-Bot-Auth": token},
             )
     except Exception as exc:
         await message.answer(f"Не удалось получить отчёт: {html.escape(str(exc))}")
@@ -208,7 +208,7 @@ async def today_summary(message: Message):
 @router.callback_query(F.data.startswith("k:"))
 async def order_status_callback(query: CallbackQuery):
     if not INTERNAL_API_SECRET:
-        await query.answer("Не задан KULCHA_INTERNAL_API_SECRET", show_alert=True)
+        await query.answer("Не задан MARKET_INTERNAL_API_SECRET", show_alert=True)
         return
     parts = query.data.split(":")
     if len(parts) != 3:
@@ -230,7 +230,7 @@ async def order_status_callback(query: CallbackQuery):
                 r = await client.patch(
                     f"{API_BASE}/orders/{order_id}/paid",
                     headers={
-                        "X-Kulcha-Internal-Secret": INTERNAL_API_SECRET,
+                        "X-Market-Internal-Secret": INTERNAL_API_SECRET,
                         "Content-Type": "application/json",
                     },
                     json={"isPaid": True},
@@ -239,7 +239,7 @@ async def order_status_callback(query: CallbackQuery):
                 r = await client.patch(
                     f"{API_BASE}/orders/{order_id}/status",
                     headers={
-                        "X-Kulcha-Internal-Secret": INTERNAL_API_SECRET,
+                        "X-Market-Internal-Secret": INTERNAL_API_SECRET,
                         "Content-Type": "application/json",
                     },
                     json={"status": status},

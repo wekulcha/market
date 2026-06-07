@@ -234,7 +234,7 @@ def _assert_local_database(database_url: str) -> None:
     if any(marker in normalized for marker in local_markers):
         return
 
-    print("Refusing to seed because KULCHA_DATABASE_URL does not look local:")
+    print("Refusing to seed because MARKET_DATABASE_URL does not look local:")
     print(database_url)
     print("Set MARKET_LOCAL_SEED_ALLOW_ANY_DB=1 only if you are absolutely sure.")
     raise SystemExit(2)

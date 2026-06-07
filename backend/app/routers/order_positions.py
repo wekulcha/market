@@ -105,7 +105,7 @@ async def get_by_id(pos_id: int, db: AsyncSession = Depends(get_db)):
 async def create_position(
     dto: OrderPositionDto,
     db: AsyncSession = Depends(get_db),
-    x_kulcha_internal_secret: str = Header(..., alias="X-Kulcha-Internal-Secret"),
+    x_kulcha_internal_secret: str = Header(..., alias="X-Market-Internal-Secret"),
 ):
     _require_internal(x_kulcha_internal_secret)
     pos = OrderPosition(
@@ -122,7 +122,7 @@ async def update_position(
     pos_id: int,
     dto: OrderPositionDto,
     db: AsyncSession = Depends(get_db),
-    x_kulcha_internal_secret: str = Header(..., alias="X-Kulcha-Internal-Secret"),
+    x_kulcha_internal_secret: str = Header(..., alias="X-Market-Internal-Secret"),
 ):
     _require_internal(x_kulcha_internal_secret)
     result = await db.execute(select(OrderPosition).where(OrderPosition.id == pos_id))
@@ -147,7 +147,7 @@ async def update_position(
 async def delete_position(
     pos_id: int,
     db: AsyncSession = Depends(get_db),
-    x_kulcha_internal_secret: str = Header(..., alias="X-Kulcha-Internal-Secret"),
+    x_kulcha_internal_secret: str = Header(..., alias="X-Market-Internal-Secret"),
 ):
     _require_internal(x_kulcha_internal_secret)
     result = await db.execute(select(OrderPosition).where(OrderPosition.id == pos_id))

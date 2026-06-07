@@ -38,7 +38,7 @@ def _require_internal(secret: str | None) -> None:
 async def open_or_get_ticket(
     body: SupportOpenTicketBody,
     db: AsyncSession = Depends(get_db),
-    x_kulcha_internal_secret: str | None = Header(None, alias="X-Kulcha-Internal-Secret"),
+    x_kulcha_internal_secret: str | None = Header(None, alias="X-Market-Internal-Secret"),
 ):
     _require_internal(x_kulcha_internal_secret)
     result = await db.execute(
@@ -69,7 +69,7 @@ async def open_or_get_ticket(
 async def get_ticket(
     ticket_id: int,
     db: AsyncSession = Depends(get_db),
-    x_kulcha_internal_secret: str | None = Header(None, alias="X-Kulcha-Internal-Secret"),
+    x_kulcha_internal_secret: str | None = Header(None, alias="X-Market-Internal-Secret"),
 ):
     _require_internal(x_kulcha_internal_secret)
     result = await db.execute(select(SupportTicket).where(SupportTicket.id == ticket_id))
@@ -83,7 +83,7 @@ async def get_ticket(
 async def close_ticket(
     ticket_id: int,
     db: AsyncSession = Depends(get_db),
-    x_kulcha_internal_secret: str | None = Header(None, alias="X-Kulcha-Internal-Secret"),
+    x_kulcha_internal_secret: str | None = Header(None, alias="X-Market-Internal-Secret"),
 ):
     _require_internal(x_kulcha_internal_secret)
     result = await db.execute(select(SupportTicket).where(SupportTicket.id == ticket_id))

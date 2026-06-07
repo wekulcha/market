@@ -50,11 +50,13 @@ origins = [
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5174",
     "http://127.0.0.1:5175",
-    "https://app.wekulcha.ru",
-    "https://admin.wekulcha.online",
-    "https://superadmin.wekulcha.online",
+    "https://market.wekulcha.ru",
+    "https://adminmarket.wekulcha.online",
+    "https://supadmin.wekulcha.online",
+    *settings.cors_allowed_origins,
     *settings.cors_additional_origins,
 ]
+origins = list(dict.fromkeys(origin.rstrip("/") for origin in origins if origin.strip()))
 
 _CORS_ORIGIN_REGEX = re.compile(r"https://.*\.ngrok-free\.app")
 

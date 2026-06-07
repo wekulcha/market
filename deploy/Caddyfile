@@ -1,23 +1,23 @@
 {
-    email {$ACME_EMAIL}
+    email {$MARKET_ACME_EMAIL}
 }
 
-{$API_DOMAIN} {
+{$MARKET_API_DOMAIN} {
     encode zstd gzip
     reverse_proxy backend:8000
 }
 
-{$USER_DOMAIN} {
+{$MARKET_USER_DOMAIN} {
     encode zstd gzip
     reverse_proxy user_panel:80
 }
 
-{$ADMIN_DOMAIN} {
+{$MARKET_ADMIN_DOMAIN} {
     encode zstd gzip
     reverse_proxy admin_panel:80
 }
 
-{$SUPERADMIN_DOMAIN} {
+{$MARKET_SUPERADMIN_DOMAIN} {
     encode zstd gzip
     reverse_proxy superadmin_panel:80
 }

@@ -64,7 +64,7 @@ def main() -> int:
     parser.add_argument(
         "--uploads-dir",
         default=None,
-        help="Path to legacy uploads directory. Defaults to KULCHA_UPLOADS_DIR or backend/uploads if present.",
+        help="Path to legacy uploads directory. Defaults to MARKET_UPLOADS_DIR or backend/uploads if present.",
     )
     parser.add_argument(
         "--no-skip-existing",

@@ -1,4 +1,4 @@
-# KULCHA Bots (`bots`)
+# Kulcha Market Bots (`bots`)
 
 В проекте используются Telegram-боты на `aiogram 3.x`:
 
@@ -30,42 +30,42 @@ python main.py
 
 ### `user_bot`
 
-- `KULCHA_USER_BOT_TOKEN`
-- `KULCHA_API_BASE` (обычно `http://localhost:8000/api/v1`)
-- `KULCHA_USER_MINI_APP_URL`
-- `KULCHA_USER_MINI_APP_VERSION` (опционально)
-- `KULCHA_SUPPORT_LINK`
-- `KULCHA_BOT_API_SECRET` (если backend это требует)
+- `MARKET_USER_BOT_TOKEN`
+- `MARKET_API_BASE` (обычно `http://localhost:8000/api/v1`)
+- `MARKET_USER_MINI_APP_URL`
+- `MARKET_USER_MINI_APP_VERSION` (опционально)
+- `MARKET_SUPPORT_LINK`
+- `MARKET_BOT_API_SECRET` (если backend это требует)
 
 ### `admin_bot`
 
-- `KULCHA_ADMIN_BOT_TOKEN`
-- `KULCHA_API_BASE`
-- `KULCHA_ADMIN_MINI_APP_URL`
-- `KULCHA_SUPPORT_LINK`
-- `KULCHA_INTERNAL_API_SECRET` (должен совпадать с backend)
+- `MARKET_ADMIN_BOT_TOKEN`
+- `MARKET_API_BASE`
+- `MARKET_ADMIN_MINI_APP_URL`
+- `MARKET_SUPPORT_LINK`
+- `MARKET_INTERNAL_API_SECRET` (должен совпадать с backend)
 
 ### `superadmin_bot`
 
-- `KULCHA_SUPERADMIN_BOT_TOKEN`
-- `KULCHA_API_BASE`
-- `KULCHA_SUPERADMIN_ALLOWED_IDS` (опционально)
-- `KULCHA_SUPERADMIN_MINI_APP_URL`
-- `KULCHA_SUPPORT_LINK`
+- `MARKET_SUPERADMIN_BOT_TOKEN`
+- `MARKET_API_BASE`
+- `MARKET_SUPERADMIN_ALLOWED_IDS` (опционально)
+- `MARKET_SUPERADMIN_MINI_APP_URL`
+- `MARKET_SUPPORT_LINK`
 
 ### `support_bot`
 
-- `KULCHA_SUPPORT_BOT_TOKEN`
-- `KULCHA_API_BASE`
-- `KULCHA_INTERNAL_API_SECRET` (должен совпадать с backend)
-- `KULCHA_SUPPORT_GROUP_ID` (ID супергруппы для тикетов)
+- `MARKET_SUPPORT_BOT_TOKEN`
+- `MARKET_API_BASE`
+- `MARKET_INTERNAL_API_SECRET` (должен совпадать с backend)
+- `MARKET_SUPPORT_GROUP_ID` (ID супергруппы для тикетов)
 
 ### `channel_subscriptions_bot`
 
-- `KULCHA_CHANNEL_SUBSCRIPTIONS_BOT_TOKEN` (по умолчанию задан в `config.py`)
-- `KULCHA_CHANNEL_SUBSCRIPTIONS_ADMIN_ID` (по умолчанию `1038155901`)
-- `KULCHA_CHANNEL_SUBSCRIPTIONS_DB` (опционально)
-- `KULCHA_CHANNEL_SUBSCRIPTIONS_TZ` (опционально, по умолчанию `Europe/Moscow`)
+- `MARKET_CHANNEL_SUBSCRIPTIONS_BOT_TOKEN`
+- `MARKET_CHANNEL_SUBSCRIPTIONS_ADMIN_ID`
+- `MARKET_CHANNEL_SUBSCRIPTIONS_DB` (опционально)
+- `MARKET_CHANNEL_SUBSCRIPTIONS_TZ` (опционально, по умолчанию `Europe/Moscow`)
 
 ## Что делает каждый бот
 

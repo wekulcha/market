@@ -14,7 +14,7 @@ fi
 docker compose up -d --build
 
 # Keep DB schema in sync with models (e.g. restaurant.image_link, orders.user_telegram_notify_message_id).
-# Requires backend image with Alembic; uses KULCHA_DATABASE_URL from compose.
+# Requires backend image with Alembic; uses MARKET_DATABASE_URL from compose.
 echo "Applying database migrations..."
 docker compose exec -T backend alembic upgrade head
 

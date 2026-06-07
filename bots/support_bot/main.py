@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 async def main() -> None:
     if not BOT_TOKEN or not BOT_TOKEN.strip():
         logger.error(
-            "KULCHA_SUPPORT_BOT_TOKEN is empty. Set it in .env / docker-compose for the support bot."
+            "MARKET_SUPPORT_BOT_TOKEN is empty. Set it in .env / docker-compose for the support bot."
         )
         sys.exit(1)
 
@@ -37,7 +37,7 @@ async def main() -> None:
         me = await bot.get_me()
         logger.info("Support bot OK: @%s (id=%s)", me.username, me.id)
     except Exception:
-        logger.exception("Cannot call getMe — проверьте KULCHA_SUPPORT_BOT_TOKEN")
+        logger.exception("Cannot call getMe — проверьте MARKET_SUPPORT_BOT_TOKEN")
         sys.exit(1)
 
     logger.info("Starting long polling…")

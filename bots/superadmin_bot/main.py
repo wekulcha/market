@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 async def main():
     if not BOT_TOKEN:
-        logger.error("Set KULCHA_SUPERADMIN_BOT_TOKEN")
+        logger.error("Set MARKET_SUPERADMIN_BOT_TOKEN")
         return
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()

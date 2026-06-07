@@ -160,7 +160,7 @@ async def login_telegram_user(
 
     settings = get_settings()
     if not settings.user_bot_token:
-        raise HTTPException(503, "KULCHA_USER_BOT_TOKEN is not configured")
+        raise HTTPException(503, "MARKET_USER_BOT_TOKEN is not configured")
 
     tg_user = verify_telegram_init_data(init_data, settings.user_bot_token)
     if not tg_user:
@@ -188,7 +188,7 @@ async def login_telegram_superadmin(
 
     settings = get_settings()
     if not settings.superadmin_bot_token:
-        raise HTTPException(503, "KULCHA_SUPERADMIN_BOT_TOKEN is not configured")
+        raise HTTPException(503, "MARKET_SUPERADMIN_BOT_TOKEN is not configured")
 
     tg_user = verify_telegram_init_data(init_data, settings.superadmin_bot_token)
     if not tg_user:
@@ -268,8 +268,8 @@ async def webapp_user(
 
     settings = get_settings()
     if not settings.user_bot_token:
-        logger.error("webapp-user: KULCHA_USER_BOT_TOKEN is not configured")
-        raise HTTPException(503, "KULCHA_USER_BOT_TOKEN is not configured")
+        logger.error("webapp-user: MARKET_USER_BOT_TOKEN is not configured")
+        raise HTTPException(503, "MARKET_USER_BOT_TOKEN is not configured")
 
     tg_user = verify_telegram_init_data(init_data, settings.user_bot_token)
     if not tg_user:
@@ -300,8 +300,8 @@ async def webapp_admin(
 
     settings = get_settings()
     if not settings.admin_bot_token:
-        logger.error("webapp-admin: KULCHA_ADMIN_BOT_TOKEN is not configured")
-        raise HTTPException(503, "KULCHA_ADMIN_BOT_TOKEN is not configured")
+        logger.error("webapp-admin: MARKET_ADMIN_BOT_TOKEN is not configured")
+        raise HTTPException(503, "MARKET_ADMIN_BOT_TOKEN is not configured")
 
     tg_user = verify_telegram_init_data(init_data, settings.admin_bot_token)
     if not tg_user:
