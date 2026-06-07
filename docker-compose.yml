@@ -114,38 +114,6 @@ services:
       MARKET_ADMIN_MINI_APP_URL: https://${MARKET_ADMIN_DOMAIN:-adminmarket.wekulcha.online}
       MARKET_SUPPORT_LINK: ${MARKET_SUPPORT_LINK:-https://t.me/wekulcha_sup_bot}
 
-  support_bot:
-    build:
-      context: .
-      dockerfile: deploy/docker/support_bot.Dockerfile
-    container_name: kulcha-market-support-bot
-    restart: unless-stopped
-    profiles:
-      - support-bot
-    depends_on:
-      - backend
-    environment:
-      MARKET_SUPPORT_BOT_TOKEN: ${MARKET_SUPPORT_BOT_TOKEN:-}
-      MARKET_INTERNAL_API_SECRET: ${MARKET_INTERNAL_API_SECRET:-market-local-internal-api-secret}
-      MARKET_API_BASE: http://backend:8000/api/v1
-      MARKET_SUPPORT_GROUP_ID: ${MARKET_SUPPORT_GROUP_ID:-}
-
-  channel_subscriptions_bot:
-    build:
-      context: .
-      dockerfile: deploy/docker/channel_subscriptions_bot.Dockerfile
-    container_name: kulcha-market-channel-subscriptions-bot
-    restart: unless-stopped
-    profiles:
-      - channel-subscriptions
-    environment:
-      MARKET_CHANNEL_SUBSCRIPTIONS_BOT_TOKEN: ${MARKET_CHANNEL_SUBSCRIPTIONS_BOT_TOKEN:-}
-      MARKET_CHANNEL_SUBSCRIPTIONS_ADMIN_ID: ${MARKET_CHANNEL_SUBSCRIPTIONS_ADMIN_ID:-}
-      MARKET_CHANNEL_SUBSCRIPTIONS_DB: /data/subscriptions.sqlite3
-      MARKET_CHANNEL_SUBSCRIPTIONS_TZ: ${MARKET_CHANNEL_SUBSCRIPTIONS_TZ:-Europe/Moscow}
-    volumes:
-      - channel_subscriptions_bot_data:/data
-
   superadmin_bot:
     build:
       context: .
@@ -186,6 +154,5 @@ services:
 
 volumes:
   postgres_data:
-  channel_subscriptions_bot_data:
   caddy_data:
   caddy_config:

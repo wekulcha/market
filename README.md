@@ -1,20 +1,20 @@
-# KULCHA Platform
+# Kulcha Market Platform
 
-Платформа приема заказов для кафе и небольших ресторанов с Telegram-интеграцией:
+Платформа приема заказов для маркета с Telegram-интеграцией:
 
 - клиентский `user_panel` (Mini App);
 - `admin_panel` для персонала ресторана (Mini App);
 - `superadmin_panel` для управления платформой;
 - `backend` на FastAPI;
-- 4 Telegram-бота в `bots/`.
+- 3 Telegram-бота в `bots/`.
 
 ## Актуальная структура
 
 - `backend/` — основной API-сервер (FastAPI + SQLAlchemy async + Alembic)
 - `user_panel/` — клиентский интерфейс заказа
-- `admin_panel/` — панель ресторана (заказы, меню, аналитика)
+- `admin_panel/` — панель магазина (заказы, товары, аналитика)
 - `superadmin_panel/` — панель суперадмина
-- `bots/` — `user_bot`, `admin_bot`, `superadmin_bot`, `support_bot`
+- `bots/` — `user_bot`, `admin_bot`, `superadmin_bot`
 - `deploy/` — Dockerfiles, Caddy gateway, скрипты
 - `scripts/` — утилиты эксплуатации и миграций
 
@@ -49,8 +49,9 @@ cd superadmin_panel && npm install && npm run dev
 cd bots/user_bot && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt && python main.py
 cd bots/admin_bot && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt && python main.py
 cd bots/superadmin_bot && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt && python main.py
-cd bots/support_bot && python -m venv venv && source venv/bin/activate && pip install -r requirements.txt && python main.py
 ```
+
+Ссылка на поддержку в маркетовых ботах ведет на общий support bot Kulcha через `MARKET_SUPPORT_LINK`.
 
 ## Запуск в Docker Compose
 
@@ -58,7 +59,7 @@ cd bots/support_bot && python -m venv venv && source venv/bin/activate && pip in
 docker compose up -d
 ```
 
-Сервисы поднимутся по `docker-compose.yml`: PostgreSQL, backend, 3 панели, 4 бота и Caddy gateway.
+Сервисы поднимутся по `docker-compose.yml`: PostgreSQL, backend, 3 панели, 3 бота и Caddy gateway.
 
 ## Документация по модулям
 

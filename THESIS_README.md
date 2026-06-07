@@ -42,7 +42,6 @@ Telegram-боты:
   - user_bot
   - admin_bot
   - superadmin_bot
-  - support_bot
 
 Сервер:
   - backend (FastAPI, REST, SQLAlchemy async, Alembic)
@@ -207,11 +206,10 @@ Telegram-боты:
 - сервисные команды (`/health`, `/stats`, `/order`, `/restaurant`, `/user`);
 - контроль доступа по списку разрешенных Telegram ID.
 
-### 7.4 `support_bot`
+### 7.4 Поддержка
 
-- создание и маршрутизация тикетов поддержки;
-- интеграция с группой поддержки Telegram;
-- взаимодействие с внутренним API backend.
+- отдельный бот поддержки в Kulcha Market не запускается;
+- ссылка поддержки в ботах ведет на общий support bot Kulcha.
 
 ## 8. Безопасность и управление доступом
 
@@ -299,4 +297,4 @@ docker compose up -d
 
 ## Примечание по достоверности
 
-Документ синхронизирован с текущим состоянием репозитория и отражает реальную рабочую архитектуру: `backend/` (FastAPI), три панели (`user_panel`, `admin_panel`, `superadmin_panel`) и четыре Telegram-бота (`user_bot`, `admin_bot`, `superadmin_bot`, `support_bot`).
+Документ синхронизирован с текущим состоянием репозитория и отражает реальную рабочую архитектуру: `backend/` (FastAPI), три панели (`user_panel`, `admin_panel`, `superadmin_panel`) и три Telegram-бота (`user_bot`, `admin_bot`, `superadmin_bot`).

@@ -5,8 +5,8 @@
 - `user_bot` — клиентский бот (регистрация, переход в Mini App, статус заказа);
 - `admin_bot` — бот персонала ресторана;
 - `superadmin_bot` — бот платформы и служебных команд;
-- `support_bot` — бот поддержки с интеграцией в Telegram-группу.
-- `channel_subscriptions_bot` — автономный бот для уведомлений о подписках и отписках в канале.
+
+Поддержка в маркетовых ботах открывается ссылкой `MARKET_SUPPORT_LINK` на общий support bot Kulcha.
 
 ## Общие требования
 
@@ -24,7 +24,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-`<bot_name>`: `user_bot`, `admin_bot`, `superadmin_bot`, `support_bot`, `channel_subscriptions_bot`.
+`<bot_name>`: `user_bot`, `admin_bot`, `superadmin_bot`.
 
 ## Переменные окружения
 
@@ -53,27 +53,11 @@ python main.py
 - `MARKET_SUPERADMIN_MINI_APP_URL`
 - `MARKET_SUPPORT_LINK`
 
-### `support_bot`
-
-- `MARKET_SUPPORT_BOT_TOKEN`
-- `MARKET_API_BASE`
-- `MARKET_INTERNAL_API_SECRET` (должен совпадать с backend)
-- `MARKET_SUPPORT_GROUP_ID` (ID супергруппы для тикетов)
-
-### `channel_subscriptions_bot`
-
-- `MARKET_CHANNEL_SUBSCRIPTIONS_BOT_TOKEN`
-- `MARKET_CHANNEL_SUBSCRIPTIONS_ADMIN_ID`
-- `MARKET_CHANNEL_SUBSCRIPTIONS_DB` (опционально)
-- `MARKET_CHANNEL_SUBSCRIPTIONS_TZ` (опционально, по умолчанию `Europe/Moscow`)
-
 ## Что делает каждый бот
 
 - `user_bot`: онбординг клиента, запрос контакта, открытие клиентского Mini App, запрос статуса заказа.
 - `admin_bot`: быстрый вход в admin Mini App, сервисные действия по заказам.
 - `superadmin_bot`: команды мониторинга (`/health`, `/stats`) и выборка сущностей (`/order`, `/restaurant`, `/user`).
-- `support_bot`: создание/сопровождение тикетов и пересылка в группу поддержки.
-- `channel_subscriptions_bot`: запоминает владельца через `/start`, привязывается к каналу после добавления администратором и отправляет владельцу события подписки/отписки.
 
 ## Проверка работоспособности
 
