@@ -1,6 +1,7 @@
 import os
 
 BOT_TOKEN = os.environ.get("MARKET_USER_BOT_TOKEN", "")
+TELEGRAM_PROXY_URL = os.environ.get("MARKET_TELEGRAM_PROXY_URL", "").strip()
 # Должен совпадать с MARKET_BOT_API_SECRET в backend (если задан).
 BOT_API_SECRET = os.environ.get("MARKET_BOT_API_SECRET", "")
 API_BASE = os.environ.get("MARKET_API_BASE", "http://localhost:8000/api/v1")

@@ -98,6 +98,7 @@ services:
       MARKET_USER_MINI_APP_URL: https://${MARKET_USER_DOMAIN:-market.wekulcha.ru}
       MARKET_USER_MINI_APP_VERSION: ${MARKET_USER_MINI_APP_VERSION:-}
       MARKET_SUPPORT_LINK: ${MARKET_SUPPORT_LINK:-https://t.me/wekulcha_sup_bot}
+      MARKET_TELEGRAM_PROXY_URL: ${MARKET_TELEGRAM_PROXY_URL:-}
 
   admin_bot:
     build:
@@ -113,6 +114,7 @@ services:
       MARKET_API_BASE: http://backend:8000/api/v1
       MARKET_ADMIN_MINI_APP_URL: https://${MARKET_ADMIN_DOMAIN:-adminmarket.wekulcha.online}
       MARKET_SUPPORT_LINK: ${MARKET_SUPPORT_LINK:-https://t.me/wekulcha_sup_bot}
+      MARKET_TELEGRAM_PROXY_URL: ${MARKET_TELEGRAM_PROXY_URL:-}
 
   superadmin_bot:
     build:
@@ -128,6 +130,7 @@ services:
       MARKET_SUPERADMIN_ALLOWED_IDS: ${MARKET_SUPERADMIN_ALLOWED_IDS:-}
       MARKET_SUPERADMIN_MINI_APP_URL: https://${MARKET_SUPERADMIN_DOMAIN:-supadmin.wekulcha.online}
       MARKET_SUPPORT_LINK: ${MARKET_SUPPORT_LINK:-https://t.me/wekulcha_sup_bot}
+      MARKET_TELEGRAM_PROXY_URL: ${MARKET_TELEGRAM_PROXY_URL:-}
 
   gateway:
     image: caddy:2.8-alpine

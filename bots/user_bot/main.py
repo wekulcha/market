@@ -6,9 +6,10 @@ load_dotenv()
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 
-from config import BOT_TOKEN
+from config import BOT_TOKEN, TELEGRAM_PROXY_URL
 from handlers import router
 
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +20,12 @@ async def main():
     if not BOT_TOKEN:
         logger.error("Set MARKET_USER_BOT_TOKEN")
         return
-    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    session = AiohttpSession(proxy=TELEGRAM_PROXY_URL) if TELEGRAM_PROXY_URL else None
+    bot = Bot(
+        token=BOT_TOKEN,
+        session=session,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
     dp = Dispatcher()
     dp.include_router(router)
     await dp.start_polling(bot)
