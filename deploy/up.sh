@@ -11,11 +11,13 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
-docker compose up -d --build
+docker compose up -d --build postgres backend
 
 # Keep DB schema in sync with models (e.g. restaurant.image_link, orders.user_telegram_notify_message_id).
 # Requires backend image with Alembic; uses MARKET_DATABASE_URL from compose.
 echo "Applying database migrations..."
 docker compose exec -T backend alembic upgrade head
+
+docker compose up -d --build
 
 docker compose ps

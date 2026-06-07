@@ -1,7 +1,7 @@
 """add refresh_session table
 
 Revision ID: 20260416_0001
-Revises:
+Revises: 20260415_0000
 Create Date: 2026-04-16 22:25:00
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 revision = "20260416_0001"
-down_revision = None
+down_revision = "20260415_0000"
 branch_labels = None
 depends_on = None
 
