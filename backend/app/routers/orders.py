@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -34,7 +34,7 @@ from app.services.session_auth import ensure_customer, get_user_from_bearer
 from app.services.telegram_auth import verify_bot_link_token, verify_telegram_init_data
 from app.services.phone_norm import is_proper_registered_phone
 from app.services.restaurant_hours import msk_today_utc_naive_bounds, restaurant_accepts_orders_now
-from app.services.telegram_notifier import notify_order_placed, notify_user_status_changed
+from app.services.telegram_notifier import notify_order_placed_detached, notify_user_status_changed
 
 router = APIRouter(prefix="/api/v1/orders", tags=["orders"])
 MIN_ORDER_ITEMS_TOTAL = Decimal("500")
@@ -487,6 +487,7 @@ async def get_by_id(
 @router.post("/checkout", status_code=201)
 async def checkout(
     body: OrderCheckoutRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(None, alias="Authorization"),
     x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
@@ -591,15 +592,11 @@ async def checkout(
         db.add(position)
 
     await db.flush()
-    await notify_order_placed(db, order.id)
-
-    result = await db.execute(
-        select(Order)
-        .options(joinedload(Order.user), joinedload(Order.restaurant), joinedload(Order.courier))
-        .where(Order.id == order.id)
-    )
-    saved = result.unique().scalar_one()
-    return _to_dto(saved)
+    response = _to_dto(order)
+    order_id = int(order.id)
+    await db.commit()
+    background_tasks.add_task(notify_order_placed_detached, order_id)
+    return response
 
 
 @router.put("/{order_id}")

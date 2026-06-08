@@ -5,6 +5,8 @@ from typing import Any
 
 import httpx
 
+from app.config import get_settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,8 +29,9 @@ async def send_message(
         body["reply_markup"] = reply_markup
 
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    proxy_url = get_settings().telegram_proxy_url or None
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, proxy=proxy_url) as client:
             resp = await client.post(url, json=body)
             if resp.status_code < 200 or resp.status_code >= 300:
                 logger.warning("Telegram sendMessage failed: %s body=%s", resp.status_code, resp.text)
@@ -39,7 +42,7 @@ async def send_message(
                 return None
             return int(data["result"]["message_id"])
     except Exception as e:
-        logger.warning("Telegram sendMessage error: %s", e)
+        logger.warning("Telegram sendMessage error: %r", e)
         return None
 
 
@@ -47,8 +50,9 @@ async def delete_message(bot_token: str, chat_id: int, message_id: int) -> bool:
     if not bot_token or message_id <= 0:
         return False
     url = f"https://api.telegram.org/bot{bot_token}/deleteMessage"
+    proxy_url = get_settings().telegram_proxy_url or None
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, proxy=proxy_url) as client:
             resp = await client.post(
                 url,
                 json={"chat_id": chat_id, "message_id": message_id},
@@ -59,5 +63,5 @@ async def delete_message(bot_token: str, chat_id: int, message_id: int) -> bool:
             data = resp.json()
             return bool(data.get("ok"))
     except Exception as e:
-        logger.warning("Telegram deleteMessage error: %s", e)
+        logger.warning("Telegram deleteMessage error: %r", e)
         return False

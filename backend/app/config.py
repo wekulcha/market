@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     user_bot_token: str = ""
     admin_bot_token: str = ""
     superadmin_bot_token: str = ""
+    telegram_proxy_url: str = ""
     superadmin_allowed_ids: Annotated[list[int], NoDecode] = []
 
     auth_access_secret: str = ""

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.config import get_settings
+from app.database import async_session
 from app.models.order import Order
 from app.models.order_position import OrderPosition
 from app.models.staff import Staff
@@ -234,6 +235,16 @@ async def notify_order_placed(db: AsyncSession, order_id: int) -> None:
             await telegram_bot_client.send_message(
                 admin_token, s.user.id, admin_html, reply_markup=keyboard
             )
+
+
+async def notify_order_placed_detached(order_id: int) -> None:
+    async with async_session() as db:
+        try:
+            await notify_order_placed(db, order_id)
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            logger.exception("Failed to send order placed notifications for order_id=%s", order_id)
 
 
 async def notify_user_status_changed(db: AsyncSession, order_id: int) -> None:
