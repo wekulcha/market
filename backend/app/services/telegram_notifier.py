@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 
 _STATUS_RU: dict[str, str] = {
     "CREATED": "Принят",
-    "ACCEPTED": "Собирается",
-    "COOKING": "Собирается",
-    "DELIVERY": "Собирается",
+    "ACCEPTED": "Собран",
+    "COOKING": "Собран",
+    "DELIVERY": "Собран",
     "DONE": "Завершён",
     "CANCELLED": "Отменён",
 }
@@ -168,7 +168,7 @@ def _build_admin_keyboard(order_id: int) -> dict:
         "inline_keyboard": [
             [
                 {"text": "❌ Отмена", "callback_data": f"k:{order_id}:CAN"},
-                {"text": "🧺 Собирается", "callback_data": f"k:{order_id}:ACC"},
+                {"text": "🧺 Собран", "callback_data": f"k:{order_id}:ACC"},
             ]
         ]
     }

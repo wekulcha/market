@@ -4,9 +4,9 @@ import { cancelOrder } from '../../api/orders';
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   CREATED: 'Принят',
-  ACCEPTED: 'Собирается',
-  COOKING: 'Собирается',
-  DELIVERY: 'Собирается',
+  ACCEPTED: 'Собран',
+  COOKING: 'Собран',
+  DELIVERY: 'Собран',
   DONE: 'Завершён',
   CANCELLED: 'Отменён',
 };

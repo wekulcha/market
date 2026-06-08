@@ -22,9 +22,9 @@ const STATUS_FLOW: AdminOrderStatusCode[] = [
 
 const STATUS_LABEL: Record<AdminOrderStatusCode, string> = {
   CREATED: "Принят",
-  ACCEPTED: "Собирается",
-  COOKING: "Собирается",
-  DELIVERY: "Собирается",
+  ACCEPTED: "Собран",
+  COOKING: "Собран",
+  DELIVERY: "Собран",
   DONE: "Завершён",
   CANCELLED: "Отменён",
 };
@@ -596,7 +596,7 @@ export const AdminOrdersTab: React.FC<AdminOrdersTabProps> = ({
   const filters: { key: AdminOrderFilterStatus; label: string }[] = [
     { key: "ALL", label: "Все" },
     { key: "CREATED", label: "Принят" },
-    { key: "ACCEPTED", label: "Собирается" },
+    { key: "ACCEPTED", label: "Собран" },
     { key: "DONE", label: "Завершён" },
     { key: "CANCELLED", label: "Отменён" },
   ];

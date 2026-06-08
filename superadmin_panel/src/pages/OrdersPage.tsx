@@ -19,9 +19,9 @@ function formatWhen(iso: string | undefined): string {
 
 const STATUS_RU: Record<string, string> = {
   CREATED: "Принят",
-  ACCEPTED: "Собирается",
-  COOKING: "Собирается",
-  DELIVERY: "Собирается",
+  ACCEPTED: "Собран",
+  COOKING: "Собран",
+  DELIVERY: "Собран",
   DONE: "Завершён",
   CANCELLED: "Отменён",
 };

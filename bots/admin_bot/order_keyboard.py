@@ -16,7 +16,7 @@ def order_status_keyboard(order_id: int, status: str, is_paid: bool = False) -> 
             inline_keyboard=[
                 [
                     InlineKeyboardButton(text="❌ Отмена", callback_data=f"k:{order_id}:CAN"),
-                    InlineKeyboardButton(text="🧺 Собирается", callback_data=f"k:{order_id}:ACC"),
+                    InlineKeyboardButton(text="🧺 Собран", callback_data=f"k:{order_id}:ACC"),
                 ]
             ]
         )

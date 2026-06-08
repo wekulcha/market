@@ -204,9 +204,9 @@ const AnalyticsDailyChart: React.FC<AnalyticsDailyChartProps> = ({
 
 const STATUS_LABEL: Record<string, string> = {
   CREATED: "Принят",
-  ACCEPTED: "Собирается",
-  COOKING: "Собирается",
-  DELIVERY: "Собирается",
+  ACCEPTED: "Собран",
+  COOKING: "Собран",
+  DELIVERY: "Собран",
   DONE: "Завершён",
   CANCELLED: "Отменён",
 };

@@ -39,9 +39,9 @@ STATUS_FROM_CB = {
 
 STATUS_RU = {
     "CREATED": "Принят",
-    "ACCEPTED": "Собирается",
-    "COOKING": "Собирается",
-    "DELIVERY": "Собирается",
+    "ACCEPTED": "Собран",
+    "COOKING": "Собран",
+    "DELIVERY": "Собран",
     "DONE": "Завершён",
     "CANCELLED": "Отменён",
 }
