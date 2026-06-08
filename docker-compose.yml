@@ -34,7 +34,7 @@ services:
       MARKET_AUTH_COOKIE_SECURE: ${MARKET_AUTH_COOKIE_SECURE:-true}
       MARKET_SUPERADMIN_BOT_TOKEN: ${MARKET_SUPERADMIN_BOT_TOKEN:-}
       MARKET_SUPERADMIN_ALLOWED_IDS: ${MARKET_SUPERADMIN_ALLOWED_IDS:-}
-      MARKET_CORS_ALLOWED_ORIGINS: ${MARKET_CORS_ALLOWED_ORIGINS:-https://market.wekulcha.ru,https://adminmarket.wekulcha.online,https://supadmin.wekulcha.online}
+      MARKET_CORS_ALLOWED_ORIGINS: ${MARKET_CORS_ALLOWED_ORIGINS:-https://market.wekulcha.ru,https://adminmarket.wekulcha.online,https://supmarket.wekulcha.online}
       # Должен совпадать с admin_bot/superadmin_bot; для продакшена задайте в .env своё значение.
       MARKET_INTERNAL_API_SECRET: ${MARKET_INTERNAL_API_SECRET:-market-local-internal-api-secret}
       MARKET_BOT_API_SECRET: ${MARKET_BOT_API_SECRET:-}
@@ -128,7 +128,7 @@ services:
       MARKET_SUPERADMIN_BOT_TOKEN: ${MARKET_SUPERADMIN_BOT_TOKEN:-}
       MARKET_API_BASE: http://backend:8000/api/v1
       MARKET_SUPERADMIN_ALLOWED_IDS: ${MARKET_SUPERADMIN_ALLOWED_IDS:-}
-      MARKET_SUPERADMIN_MINI_APP_URL: https://${MARKET_SUPERADMIN_DOMAIN:-supadmin.wekulcha.online}
+      MARKET_SUPERADMIN_MINI_APP_URL: https://${MARKET_SUPERADMIN_DOMAIN:-supmarket.wekulcha.online}
       MARKET_SUPPORT_LINK: ${MARKET_SUPPORT_LINK:-https://t.me/wekulcha_sup_bot}
       MARKET_TELEGRAM_PROXY_URL: ${MARKET_TELEGRAM_PROXY_URL:-}
 
@@ -149,7 +149,7 @@ services:
       MARKET_API_DOMAIN: ${MARKET_API_DOMAIN:-apimarket.wekulcha.ru}
       MARKET_USER_DOMAIN: ${MARKET_USER_DOMAIN:-market.wekulcha.ru}
       MARKET_ADMIN_DOMAIN: ${MARKET_ADMIN_DOMAIN:-adminmarket.wekulcha.online}
-      MARKET_SUPERADMIN_DOMAIN: ${MARKET_SUPERADMIN_DOMAIN:-supadmin.wekulcha.online}
+      MARKET_SUPERADMIN_DOMAIN: ${MARKET_SUPERADMIN_DOMAIN:-supmarket.wekulcha.online}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

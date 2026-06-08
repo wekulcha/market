@@ -23,7 +23,7 @@ adminmarket.wekulcha.online {
     reverse_proxy kulcha-market-admin-panel:80
 }
 
-supadmin.wekulcha.online {
+supmarket.wekulcha.online {
     encode zstd gzip
     reverse_proxy kulcha-market-superadmin-panel:80
 }

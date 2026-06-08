@@ -52,7 +52,7 @@ origins = [
     "http://127.0.0.1:5175",
     "https://market.wekulcha.ru",
     "https://adminmarket.wekulcha.online",
-    "https://supadmin.wekulcha.online",
+    "https://supmarket.wekulcha.online",
     *settings.cors_allowed_origins,
     *settings.cors_additional_origins,
 ]
