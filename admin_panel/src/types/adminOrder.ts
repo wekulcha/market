@@ -1,4 +1,4 @@
-/** Backend OrderStatus enum */
+/** Backend OrderStatus enum. COOKING/DELIVERY are legacy-compatible. */
 export type AdminOrderStatusCode =
   | "CREATED"
   | "ACCEPTED"

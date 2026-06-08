@@ -3,12 +3,12 @@ import type { OrderStatus, UserOrder } from '../../types/order';
 import { cancelOrder } from '../../api/orders';
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
-  CREATED: 'Создан',
-  ACCEPTED: 'Принят',
-  COOKING: 'Готовится',
-  DELIVERY: 'В доставке',
-  DONE: 'Завершен',
-  CANCELLED: 'Отменен',
+  CREATED: 'Принят',
+  ACCEPTED: 'Собирается',
+  COOKING: 'Собирается',
+  DELIVERY: 'Собирается',
+  DONE: 'Завершён',
+  CANCELLED: 'Отменён',
 };
 
 const ORDER_TYPE_LABELS = {

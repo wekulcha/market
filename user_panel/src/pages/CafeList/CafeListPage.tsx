@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { MARKET_BRAND_NAME } from '../../config/market';
+import { MARKET_BRAND_NAME, MARKET_MIN_ORDER_TOTAL } from '../../config/market';
 import { useAppContext } from '../../context/AppContext';
 import { fetchMarketRestaurant } from '../../api/restaurants';
+import { fetchMealsByRestaurant } from '../../api/meals';
 import { Header } from '../../layout/Header';
 import { MiniAppShell } from '../../layout/MiniAppShell';
 import { PRODUCT_CATEGORIES, type ProductCategory } from '../../utils/productCategories';
+import { deliveryPromiseText } from '../../utils/deliveryPromise';
 
 export function CafeListPage() {
   const navigate = useNavigate();
@@ -17,6 +19,16 @@ export function CafeListPage() {
   const { data: marketRestaurant, error: queryError, refetch } = useQuery({
     queryKey: ['market-restaurant'],
     queryFn: fetchMarketRestaurant,
+  });
+  const {
+    data: meals = [],
+    error: mealsQueryError,
+    refetch: refetchMeals,
+    isLoading: mealsLoading,
+  } = useQuery({
+    queryKey: ['market-restaurant-meals', marketRestaurant?.id],
+    queryFn: () => fetchMealsByRestaurant(marketRestaurant!.id),
+    enabled: Boolean(marketRestaurant?.id),
   });
 
   useEffect(() => {
@@ -30,21 +42,28 @@ export function CafeListPage() {
   }, [marketRestaurant, setSelectedRestaurant]);
 
   const normalizedSearch = searchQuery.toLowerCase().trim();
+  const categoriesWithProducts = useMemo(() => {
+    const keys = new Set(meals.filter((meal) => meal.is_available).map((meal) => meal.category).filter(Boolean));
+    return PRODUCT_CATEGORIES.filter((category) => keys.has(category.key));
+  }, [meals]);
   const visibleCategories = useMemo(() => {
-    if (!normalizedSearch) return PRODUCT_CATEGORIES;
-    return PRODUCT_CATEGORIES.filter((category) => {
+    const source = mealsLoading ? PRODUCT_CATEGORIES : categoriesWithProducts;
+    if (!normalizedSearch) return source;
+    return source.filter((category) => {
       const haystack = [category.label, category.shortLabel, ...category.keywords]
         .join(' ')
         .toLowerCase();
       return haystack.includes(normalizedSearch);
     });
-  }, [normalizedSearch]);
+  }, [categoriesWithProducts, mealsLoading, normalizedSearch]);
 
-  const error = queryError
-    ? queryError instanceof Error
-      ? queryError.message
+  const combinedError = queryError ?? mealsQueryError;
+  const error = combinedError
+    ? combinedError instanceof Error
+      ? combinedError.message
       : 'Не удалось загрузить магазин.'
     : null;
+  const deliveryText = deliveryPromiseText(marketRestaurant?.ordersAcceptTo);
 
   return (
     <MiniAppShell>
@@ -71,7 +90,9 @@ export function CafeListPage() {
         <section className="space-y-3">
           <div className="px-1">
             <h2 className="text-xl font-semibold text-slate-950">Каталог товаров</h2>
-            <p className="mt-1 text-xs text-slate-500">Доставка от 0 ₽ · 45-60 мин</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Минимальный заказ от {MARKET_MIN_ORDER_TOTAL} ₽ · {deliveryText}
+            </p>
           </div>
 
           {error && (
@@ -79,7 +100,10 @@ export function CafeListPage() {
               {error}
               <button
                 type="button"
-                onClick={() => void refetch()}
+                onClick={() => {
+                  void refetch();
+                  void refetchMeals();
+                }}
                 className="ml-2 font-semibold underline"
               >
                 Повторить
@@ -138,4 +162,3 @@ function CategoryCard({
     </button>
   );
 }
-

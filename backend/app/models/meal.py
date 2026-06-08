@@ -32,7 +32,7 @@ class Meal(Base):
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     weight: Mapped[int | None] = mapped_column(Integer, nullable=True)
     calorie: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    image_link: Mapped[str] = mapped_column(String(2048), nullable=False)
+    image_link: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     category: Mapped[str | None] = mapped_column(MealCategoryColumn(), nullable=True)
     price: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
     is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

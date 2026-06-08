@@ -3,5 +3,5 @@ export interface Restaurant {
   name: string;
   address: string;
   imageLink?: string | null;
+  ordersAcceptTo?: string | null;
 }
-

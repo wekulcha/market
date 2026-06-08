@@ -9,7 +9,7 @@ interface MealDto {
   description: string | null;
   weight: number | null;
   calorie: number | null;
-  imageLink: string;
+  imageLink: string | null;
   category: string | null;
   price: number;
   available: boolean;
@@ -23,7 +23,7 @@ function toMeal(d: MealDto): Meal {
     description: d.description,
     weight: d.weight,
     calorie: d.calorie,
-    image_link: d.imageLink ?? '',
+    image_link: d.imageLink ?? null,
     category: d.category ?? 'OTHER',
     price: Number(d.price),
     is_available: d.available ?? true,

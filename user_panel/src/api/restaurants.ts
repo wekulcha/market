@@ -7,6 +7,7 @@ interface RestaurantDto {
   name: string;
   address: string;
   imageLink?: string | null;
+  ordersAcceptTo?: string | null;
 }
 
 function mapRestaurant(d: RestaurantDto): Restaurant {
@@ -15,6 +16,7 @@ function mapRestaurant(d: RestaurantDto): Restaurant {
     name: d.name,
     address: d.address,
     imageLink: d.imageLink ?? null,
+    ordersAcceptTo: d.ordersAcceptTo ?? null,
   };
 }
 
@@ -54,4 +56,3 @@ export async function fetchMarketRestaurant(): Promise<Restaurant> {
 
   return marketStore;
 }
-

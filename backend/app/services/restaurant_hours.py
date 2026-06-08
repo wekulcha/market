@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from app.models.restaurant import Restaurant
 
 MSK = ZoneInfo("Europe/Moscow")
+DEFAULT_DELIVERY_CUTOFF = "17:00"
 
 
 def msk_today_utc_naive_bounds() -> tuple[datetime, datetime]:
@@ -36,7 +37,29 @@ def _parse_hhmm(s: str | None) -> tuple[int, int] | None:
 
 
 def restaurant_accepts_orders_now(rest: Restaurant) -> bool:
-    """Окно приёма заказов по Москве; если поля не заданы — без ограничения."""
+    """Маркет принимает заказы круглосуточно; дедлайн влияет только на день доставки."""
+    return True
+
+
+def restaurant_delivery_cutoff(rest: Restaurant) -> str:
+    return (rest.orders_accept_to or DEFAULT_DELIVERY_CUTOFF).strip() or DEFAULT_DELIVERY_CUTOFF
+
+
+def delivery_day_label(rest: Restaurant, now: datetime | None = None) -> str:
+    """Сегодня, если заказ оформлен до дедлайна доставки по Москве; иначе завтра."""
+    cutoff = _parse_hhmm(restaurant_delivery_cutoff(rest))
+    if not cutoff:
+        cutoff = _parse_hhmm(DEFAULT_DELIVERY_CUTOFF)
+    if not cutoff:
+        return "сегодня"
+    current = now.astimezone(MSK) if now else datetime.now(MSK)
+    current_minutes = current.hour * 60 + current.minute
+    cutoff_minutes = cutoff[0] * 60 + cutoff[1]
+    return "сегодня" if current_minutes <= cutoff_minutes else "завтра"
+
+
+def restaurant_accepts_orders_in_window(rest: Restaurant) -> bool:
+    """Старое окно приёма заказов оставлено для совместимости, но в checkout не используется."""
     a = _parse_hhmm(rest.orders_accept_from)
     b = _parse_hhmm(rest.orders_accept_to)
     if not a or not b:

@@ -5,7 +5,7 @@ export interface Meal {
   description: string | null;
   weight: number | null;
   calorie: number | null;
-  image_link: string;
+  image_link: string | null;
   category: string | null;
   price: number;
   is_available: boolean;

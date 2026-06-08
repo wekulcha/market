@@ -32,8 +32,8 @@ interface MealDto {
   description: string | null;
   weight: number | null;
   calorie: number | null;
-  imageLink: string;
-  category: string;
+  imageLink: string | null;
+  category: string | null;
   price: number;
   available: boolean;
 }
@@ -46,8 +46,8 @@ function toMeal(d: MealDto): Meal {
     description: d.description,
     weight: d.weight,
     calorie: d.calorie,
-    image_link: d.imageLink ?? "",
-    category: d.category,
+    image_link: d.imageLink ?? null,
+    category: d.category ?? "",
     price: Number(d.price),
     is_available: d.available ?? true,
   };
@@ -96,7 +96,7 @@ export async function createAdminMeal(
     description: payload.description ?? null,
     weight: payload.weight ?? null,
     calorie: payload.calorie ?? null,
-    imageLink: payload.image_link,
+    imageLink: payload.image_link?.trim() || null,
     category: payload.category,
     price: payload.price,
     available: payload.is_available ?? true,
@@ -137,7 +137,7 @@ export async function updateAdminMeal(
     description: updates.description ?? meal.description,
     weight: updates.weight ?? meal.weight,
     calorie: updates.calorie ?? meal.calorie,
-    imageLink: updates.image_link ?? meal.image_link,
+    imageLink: updates.image_link === undefined ? meal.image_link : updates.image_link?.trim() || null,
     category: updates.category ?? meal.category,
     price: updates.price ?? meal.price,
     available: updates.is_available ?? meal.is_available,

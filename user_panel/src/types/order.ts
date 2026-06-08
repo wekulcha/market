@@ -1,6 +1,7 @@
 import type { ServiceType } from '../context/AppContext';
 
 export type PaymentMethod = 'CASH' | 'TRANSFER';
+/** COOKING/DELIVERY оставлены для совместимости со старыми заказами. */
 export type OrderStatus = 'CREATED' | 'ACCEPTED' | 'COOKING' | 'DELIVERY' | 'DONE' | 'CANCELLED';
 
 export interface OrderItemPayload {

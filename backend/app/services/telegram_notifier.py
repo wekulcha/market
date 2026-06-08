@@ -13,16 +13,17 @@ from app.models.order import Order
 from app.models.order_position import OrderPosition
 from app.models.staff import Staff
 from app.services import telegram_bot_client
+from app.services.restaurant_hours import delivery_day_label, restaurant_delivery_cutoff
 
 logger = logging.getLogger(__name__)
 
 
 _STATUS_RU: dict[str, str] = {
-    "CREATED": "Создан",
-    "ACCEPTED": "Принят",
-    "COOKING": "Готовится",
-    "DELIVERY": "Доставка",
-    "DONE": "Выполнен",
+    "CREATED": "Принят",
+    "ACCEPTED": "Собирается",
+    "COOKING": "Собирается",
+    "DELIVERY": "Собирается",
+    "DONE": "Завершён",
     "CANCELLED": "Отменён",
 }
 
@@ -103,6 +104,8 @@ def _format_user_order_block(
     *,
     is_update: bool = False,
 ) -> str:
+    delivery_day = delivery_day_label(order.restaurant)
+    cutoff = restaurant_delivery_cutoff(order.restaurant)
     parts = [
         f"🍽 <b>{_esc(title)}</b>",
         "━━━━━━━━━━━━━━",
@@ -110,6 +113,7 @@ def _format_user_order_block(
         f"📍 {_esc(order.restaurant.name)}",
         f"📌 Статус: <b>{_status_ru(order.status)}</b>",
         f"🧾 {_order_type_ru(order.order_type)}",
+        f"🚚 Доставим: <b>{delivery_day}</b> (заказы до {cutoff} — сегодня)",
         f"💰 Сумма: <b>{order.total} ₽</b>",
         "",
         "<b>Состав:</b>",
@@ -133,6 +137,8 @@ def _format_admin_new_order(order: Order, lines: list[OrderPosition]) -> str:
     phone = _phone_clickable(user.phone)
     status_ru = _status_ru(order.status)
     paid = "✅ Оплачен" if getattr(order, "is_paid", False) else "❌ Не оплачен"
+    delivery_day = delivery_day_label(order.restaurant)
+    cutoff = restaurant_delivery_cutoff(order.restaurant)
     if _enum_key(order.order_type) == "DINE_IN":
         place = f"🪑 Место: <b>{_esc(_compact_place_text(order.table_number))}</b>"
     else:
@@ -143,6 +149,7 @@ def _format_admin_new_order(order: Order, lines: list[OrderPosition]) -> str:
         f"№ <code>{order.id}</code> · <b>{status_ru}</b>",
         f"👤 {uname} · {phone}",
         f"{place}",
+        f"🚚 Доставим: <b>{delivery_day}</b> · дедлайн {cutoff}",
         f"💰 <b>{order.total} ₽</b> · {paid}",
         "",
         "<b>Позиции:</b>",
@@ -156,12 +163,12 @@ def _format_admin_new_order(order: Order, lines: list[OrderPosition]) -> str:
 
 
 def _build_admin_keyboard(order_id: int) -> dict:
-    """Новый заказ: отмена слева, принят справа. Дальше клавиатура обновляется из бота по статусу."""
+    """Новый заказ: отмена слева, сборка справа. Дальше клавиатура обновляется из бота."""
     return {
         "inline_keyboard": [
             [
                 {"text": "❌ Отмена", "callback_data": f"k:{order_id}:CAN"},
-                {"text": "✅ Принят", "callback_data": f"k:{order_id}:ACC"},
+                {"text": "🧺 Собирается", "callback_data": f"k:{order_id}:ACC"},
             ]
         ]
     }

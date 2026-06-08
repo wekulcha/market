@@ -116,7 +116,7 @@ async def create_meal(
     meal = Meal(
         restaurant_id=dto.restaurantId, name=dto.name,
         description=dto.description, weight=dto.weight, calorie=dto.calorie,
-        image_link=dto.imageLink,
+        image_link=(dto.imageLink or "").strip() or None,
         category=category_value,
         price=dto.price, is_available=dto.available if dto.available is not None else True,
     )
@@ -151,8 +151,8 @@ async def update_meal(
         existing.weight = dto.weight
     if dto.calorie is not None:
         existing.calorie = dto.calorie
-    if dto.imageLink is not None:
-        existing.image_link = dto.imageLink
+    if "imageLink" in dto.model_fields_set:
+        existing.image_link = (dto.imageLink or "").strip() or None
     if dto.category is not None:
         existing.category = MealCategory(dto.category).value
     if dto.price is not None:

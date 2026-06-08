@@ -3,7 +3,7 @@ export interface AdminMealCreate {
   description?: string | null;
   weight?: number | null;
   calorie?: number | null;
-  image_link: string;
+  image_link?: string | null;
   category: string;
   price: number;
   is_available?: boolean;
@@ -15,10 +15,9 @@ export interface Meal {
   description: string | null;
   weight: number | null;
   calorie: number | null;
-  image_link: string;
+  image_link: string | null;
   category: string;
   price: number;
   is_available: boolean;
   restaurant_id: number;
 }
-

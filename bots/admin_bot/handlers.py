@@ -32,19 +32,17 @@ router = Router()
 
 STATUS_FROM_CB = {
     "ACC": "ACCEPTED",
-    "COO": "COOKING",
-    "DEL": "DELIVERY",
     "DON": "DONE",
     "CAN": "CANCELLED",
     "PAY": "PAID",
 }
 
 STATUS_RU = {
-    "CREATED": "Создан",
-    "ACCEPTED": "Принят",
-    "COOKING": "Готовится",
-    "DELIVERY": "В доставке",
-    "DONE": "Выполнен",
+    "CREATED": "Принят",
+    "ACCEPTED": "Собирается",
+    "COOKING": "Собирается",
+    "DELIVERY": "Собирается",
+    "DONE": "Завершён",
     "CANCELLED": "Отменён",
 }
 

@@ -41,11 +41,11 @@ export async function patchRestaurant(
   const body: Record<string, string | number | null | undefined> = {};
   if (patch.name !== undefined) body.name = patch.name;
   if (patch.address !== undefined) body.address = patch.address;
-  if (patch.imageLink !== undefined) body.imageLink = patch.imageLink ?? undefined;
-  if (patch.workingHoursFrom !== undefined) body.workingHoursFrom = patch.workingHoursFrom ?? undefined;
-  if (patch.workingHoursTo !== undefined) body.workingHoursTo = patch.workingHoursTo ?? undefined;
-  if (patch.ordersAcceptFrom !== undefined) body.ordersAcceptFrom = patch.ordersAcceptFrom ?? undefined;
-  if (patch.ordersAcceptTo !== undefined) body.ordersAcceptTo = patch.ordersAcceptTo ?? undefined;
+  if (patch.imageLink !== undefined) body.imageLink = patch.imageLink;
+  if (patch.workingHoursFrom !== undefined) body.workingHoursFrom = patch.workingHoursFrom;
+  if (patch.workingHoursTo !== undefined) body.workingHoursTo = patch.workingHoursTo;
+  if (patch.ordersAcceptFrom !== undefined) body.ordersAcceptFrom = patch.ordersAcceptFrom;
+  if (patch.ordersAcceptTo !== undefined) body.ordersAcceptTo = patch.ordersAcceptTo;
   if (patch.telegramGroupChatId !== undefined) body.telegramGroupChatId = patch.telegramGroupChatId;
   const resp = await fetch(`${BASE_URL}/restaurants/${restaurantId}`, {
     method: "PATCH",

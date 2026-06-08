@@ -25,10 +25,7 @@ export const AdminRestaurantSettingsTab: React.FC<Props> = ({ restaurantId }) =>
   const [detail, setDetail] = useState<RestaurantDetail | null>(null);
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
-  const [workFrom, setWorkFrom] = useState("");
-  const [workTo, setWorkTo] = useState("");
-  const [ordersFrom, setOrdersFrom] = useState("");
-  const [ordersTo, setOrdersTo] = useState("");
+  const [deliveryCutoff, setDeliveryCutoff] = useState("17:00");
   const [groupChatId, setGroupChatId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -46,10 +43,7 @@ export const AdminRestaurantSettingsTab: React.FC<Props> = ({ restaurantId }) =>
         setDetail(d);
         setName(d.name);
         setAddress(d.address);
-        setWorkFrom(d.workingHoursFrom ?? "");
-        setWorkTo(d.workingHoursTo ?? "");
-        setOrdersFrom(d.ordersAcceptFrom ?? "");
-        setOrdersTo(d.ordersAcceptTo ?? "");
+        setDeliveryCutoff(d.ordersAcceptTo ?? "17:00");
         setGroupChatId(
           d.telegramGroupChatId != null ? String(d.telegramGroupChatId) : ""
         );
@@ -84,10 +78,10 @@ export const AdminRestaurantSettingsTab: React.FC<Props> = ({ restaurantId }) =>
       const next = await patchRestaurant(restaurantId, {
         name: name.trim(),
         address: address.trim(),
-        workingHoursFrom: workFrom.trim() || null,
-        workingHoursTo: workTo.trim() || null,
-        ordersAcceptFrom: ordersFrom.trim() || null,
-        ordersAcceptTo: ordersTo.trim() || null,
+        workingHoursFrom: null,
+        workingHoursTo: null,
+        ordersAcceptFrom: null,
+        ordersAcceptTo: deliveryCutoff.trim() || "17:00",
         telegramGroupChatId: parsedGroupId,
       });
       setDetail(next);
@@ -131,54 +125,18 @@ export const AdminRestaurantSettingsTab: React.FC<Props> = ({ restaurantId }) =>
 
           <div className="grid gap-3 xl:grid-cols-2">
             <div className="space-y-2 rounded-2xl border border-slate-100 p-3 bg-slate-50/80">
-            <div className="text-[11px] font-semibold text-slate-800">Время работы (для гостей)</div>
-            <div className="grid grid-cols-2 gap-2">
+              <div className="text-[11px] font-semibold text-slate-800">Дедлайн доставки сегодня</div>
               <div>
-                <label className="text-[10px] text-slate-500">С</label>
+                <label className="text-[10px] text-slate-500">Время</label>
                 <input
                   className="w-full rounded-xl border border-slate-200 px-2 py-1.5 text-sm"
-                  placeholder="10:00"
-                  value={workFrom}
-                  onChange={(e) => setWorkFrom(e.target.value)}
+                  placeholder="17:00"
+                  value={deliveryCutoff}
+                  onChange={(e) => setDeliveryCutoff(e.target.value)}
                 />
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-500">До</label>
-                <input
-                  className="w-full rounded-xl border border-slate-200 px-2 py-1.5 text-sm"
-                  placeholder="22:00"
-                  value={workTo}
-                  onChange={(e) => setWorkTo(e.target.value)}
-                />
-              </div>
-            </div>
-            <p className="text-[10px] text-slate-500">Формат ЧЧ:ММ (по Москве).</p>
-            </div>
-
-            <div className="space-y-2 rounded-2xl border border-slate-100 p-3 bg-slate-50/80">
-              <div className="text-[11px] font-semibold text-slate-800">Приём заказов</div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] text-slate-500">С</label>
-                  <input
-                    className="w-full rounded-xl border border-slate-200 px-2 py-1.5 text-sm"
-                    placeholder="10:00"
-                    value={ordersFrom}
-                    onChange={(e) => setOrdersFrom(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-500">До</label>
-                  <input
-                    className="w-full rounded-xl border border-slate-200 px-2 py-1.5 text-sm"
-                    placeholder="17:00"
-                    value={ordersTo}
-                    onChange={(e) => setOrdersTo(e.target.value)}
-                  />
-                </div>
               </div>
               <p className="text-[10px] text-slate-500">
-                Вне этого окна гости не смогут оформить заказ. Оставьте пустым — без ограничения.
+                Заказы до этого времени доставляем сегодня, после него — завтра. Формат ЧЧ:ММ по Москве.
               </p>
             </div>
           </div>

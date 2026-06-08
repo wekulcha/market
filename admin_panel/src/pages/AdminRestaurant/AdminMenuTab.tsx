@@ -22,6 +22,7 @@ interface AdminMenuTabProps {
 
 interface CreateMealModalProps {
   restaurantId: number;
+  fixedCategory: string;
   onCancel: () => void;
   onSave: (data: AdminMealCreate) => void;
   onDelete?: () => void;
@@ -33,6 +34,7 @@ interface CreateMealModalProps {
 
 const CreateMealModal: React.FC<CreateMealModalProps> = ({
   restaurantId,
+  fixedCategory,
   onCancel,
   onSave,
   onDelete,
@@ -47,7 +49,7 @@ const CreateMealModal: React.FC<CreateMealModalProps> = ({
     weight: undefined,
     calorie: undefined,
     image_link: "",
-    category: "",
+    category: fixedCategory,
     price: 0,
     is_available: true,
   });
@@ -61,12 +63,18 @@ const CreateMealModal: React.FC<CreateMealModalProps> = ({
       description: initialMeal.description ?? "",
       weight: initialMeal.weight,
       calorie: initialMeal.calorie,
-      image_link: initialMeal.image_link,
-      category: initialMeal.category,
+      image_link: initialMeal.image_link ?? "",
+      category: initialMeal.category || fixedCategory,
       price: initialMeal.price,
       is_available: initialMeal.is_available,
     });
-  }, [mode, initialMeal]);
+  }, [mode, initialMeal, fixedCategory]);
+
+  useEffect(() => {
+    if (mode === "create") {
+      setForm((prev) => ({ ...prev, category: fixedCategory }));
+    }
+  }, [fixedCategory, mode]);
 
   const handleChange = (field: keyof AdminMealCreate, value: unknown) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -74,7 +82,7 @@ const CreateMealModal: React.FC<CreateMealModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.category || !form.image_link || !form.price) {
+    if (!form.name || !form.category || !form.price) {
       return;
     }
     onSave(form);
@@ -119,24 +127,11 @@ const CreateMealModal: React.FC<CreateMealModalProps> = ({
           />
         </div>
 
-        {/* Category */}
         <div className="space-y-1">
-          <label className="text-[11px] text-slate-600">Категория *</label>
-          <select
-            className="w-full rounded-xl border border-slate-200 px-2 py-1.5 text-[11px] bg-white"
-            value={form.category}
-            onChange={(e) => handleChange("category", e.target.value)}
-            required
-          >
-            <option value="" disabled>
-              Выберите категорию
-            </option>
-            {MEAL_CATEGORY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          <label className="text-[11px] text-slate-600">Каталог</label>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] text-slate-700">
+            {mealCategoryLabel(form.category)}
+          </div>
         </div>
 
         {/* Price */}
@@ -158,7 +153,7 @@ const CreateMealModal: React.FC<CreateMealModalProps> = ({
         {/* Image upload */}
         <div className="space-y-1">
           <label className="text-[11px] text-slate-600">
-            Изображение товара {mode === "create" ? "*" : ""} (JPG, JPEG, PNG)
+            Изображение товара (необязательно, JPG, JPEG, PNG)
           </label>
           <input
             type="file"
@@ -188,7 +183,7 @@ const CreateMealModal: React.FC<CreateMealModalProps> = ({
               ? "Загрузка..."
               : form.image_link
                 ? "Фото загружено."
-                : "Выберите файл — он сохранится на сервере."}
+                : "Можно оставить без фото."}
           </p>
           {form.image_link ? (
             <div className="mt-2 rounded-xl overflow-hidden border border-slate-100 bg-slate-50 max-h-36">
@@ -244,7 +239,7 @@ const CreateMealModal: React.FC<CreateMealModalProps> = ({
 
         <button
           type="submit"
-          disabled={loading || uploadingImage || !form.image_link}
+          disabled={loading || uploadingImage}
           className="w-full rounded-2xl bg-slate-900 text-white text-xs font-semibold py-2 mt-1 disabled:opacity-60"
         >
           {loading ? "Сохраняем..." : mode === "edit" ? "Сохранить" : "Создать товар"}
@@ -271,7 +266,7 @@ export const AdminMenuTab: React.FC<AdminMenuTabProps> = ({
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createCategory, setCreateCategory] = useState<string | null>(null);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [editMeal, setEditMeal] = useState<Meal | null>(null);
@@ -308,7 +303,7 @@ export const AdminMenuTab: React.FC<AdminMenuTabProps> = ({
         is_available: form.is_available ?? true,
       });
       setMeals((prev) => [...prev, created]);
-      setIsCreateOpen(false);
+      setCreateCategory(null);
     } catch (err) {
       console.error(err);
       setCreateError(err instanceof Error ? err.message : "Не удалось создать товар. Попробуйте ещё раз.");
@@ -398,23 +393,16 @@ export const AdminMenuTab: React.FC<AdminMenuTabProps> = ({
     });
   }, [meals, categoryRank]);
 
-  const categoriesPresent = useMemo(() => {
-    const seen = new Set<string>();
-    const order: string[] = [];
-    for (const m of sortedMeals) {
-      if (!seen.has(m.category)) {
-        seen.add(m.category);
-        order.push(m.category);
-      }
-    }
-    return order;
-  }, [sortedMeals]);
+  const categoriesPresent = useMemo(
+    () => MEAL_CATEGORY_OPTIONS.map((option) => option.value),
+    []
+  );
 
   const categoryAvailability = useMemo(() => {
     const result: Record<string, boolean> = {};
     for (const category of categoriesPresent) {
       const categoryMeals = sortedMeals.filter((meal) => meal.category === category);
-      result[category] = categoryMeals.length > 0 && categoryMeals.every((meal) => meal.is_available);
+      result[category] = categoryMeals.length === 0 || categoryMeals.some((meal) => meal.is_available);
     }
     return result;
   }, [categoriesPresent, sortedMeals]);
@@ -497,16 +485,7 @@ export const AdminMenuTab: React.FC<AdminMenuTabProps> = ({
         <div className="text-sm font-semibold text-slate-900">
           Каталог товаров
         </div>
-        <button
-          type="button"
-          className="text-xs px-3 py-1 rounded-full bg-emerald-500 text-white font-semibold shadow-sm"
-          onClick={() => {
-            setCreateError(null);
-            setIsCreateOpen(true);
-          }}
-        >
-          + Добавить товар
-        </button>
+        <div className="text-[11px] text-slate-500">Добавляйте товары внутри нужного каталога.</div>
       </div>
 
       {loading && (
@@ -517,13 +496,7 @@ export const AdminMenuTab: React.FC<AdminMenuTabProps> = ({
         <div className="text-xs text-red-500">{error}</div>
       )}
 
-      {!loading && !error && meals.length === 0 && (
-        <div className="text-xs text-slate-500">
-          Пока нет товаров в каталоге. Добавьте первый товар.
-        </div>
-      )}
-
-      {!loading && !error && meals.length > 0 && (
+      {!loading && !error && (
         <>
           <div
             ref={tabBarRef}
@@ -553,6 +526,10 @@ export const AdminMenuTab: React.FC<AdminMenuTabProps> = ({
 
           <div className="space-y-5">
             {categoriesPresent.map((cat) => (
+              (() => {
+                const mealsInCategory = sortedMeals.filter((meal) => meal.category === cat);
+                const categoryEnabled = categoryAvailability[cat] ?? true;
+                return (
               <div
                 key={cat}
                 data-cat={cat}
@@ -570,25 +547,46 @@ export const AdminMenuTab: React.FC<AdminMenuTabProps> = ({
                   <div className="text-[11px] font-semibold text-slate-500">
                     {mealCategoryLabel(cat)}
                   </div>
-                  <label className="flex items-center gap-1.5 text-[10px] text-slate-600">
-                    <input
-                      type="checkbox"
-                      checked={categoryAvailability[cat] ?? false}
-                      disabled={categoryLoading[cat]}
-                      onChange={async (e) => {
-                        await handleToggleCategoryAvailability(cat, e.target.checked);
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 text-[10px] text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={categoryEnabled}
+                        disabled={categoryLoading[cat] || mealsInCategory.length === 0}
+                        onChange={async (e) => {
+                          await handleToggleCategoryAvailability(cat, e.target.checked);
+                        }}
+                        className="h-3.5 w-3.5 rounded border-slate-300"
+                      />
+                      <span>
+                        {categoryLoading[cat]
+                          ? "Сохраняем..."
+                          : mealsInCategory.length === 0
+                            ? "Нет товаров"
+                            : categoryEnabled
+                              ? "Каталог включён"
+                              : "Каталог скрыт"}
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      className="rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-semibold text-white shadow-sm"
+                      onClick={() => {
+                        setCreateError(null);
+                        setCreateCategory(cat);
                       }}
-                      className="h-3.5 w-3.5 rounded border-slate-300"
-                    />
-                    <span>
-                      {categoryLoading[cat] ? "Сохраняем..." : "В наличии"}
-                    </span>
-                  </label>
+                    >
+                      + товар
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 min-[520px]:justify-start min-[520px]:[grid-template-columns:repeat(auto-fit,10.5rem)]">
-                  {sortedMeals
-                    .filter((m) => m.category === cat)
-                    .map((meal) => (
+                  {mealsInCategory.length === 0 ? (
+                    <div className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-[11px] text-slate-500">
+                      В этом каталоге пока нет товаров.
+                    </div>
+                  ) : (
+                    mealsInCategory.map((meal) => (
             <div
               key={meal.id}
               className={
@@ -653,18 +651,22 @@ export const AdminMenuTab: React.FC<AdminMenuTabProps> = ({
                 </div>
               </div>
             </div>
-                    ))}
+                      ))
+                  )}
                 </div>
               </div>
+                );
+              })()
             ))}
           </div>
         </>
       )}
 
-      {isCreateOpen && (
+      {createCategory && (
         <CreateMealModal
           restaurantId={restaurantId}
-          onCancel={() => setIsCreateOpen(false)}
+          fixedCategory={createCategory}
+          onCancel={() => setCreateCategory(null)}
           onSave={handleCreateMeal}
           loading={createLoading}
           error={createError}
@@ -674,6 +676,7 @@ export const AdminMenuTab: React.FC<AdminMenuTabProps> = ({
       {editMeal && (
         <CreateMealModal
           restaurantId={restaurantId}
+          fixedCategory={editMeal.category}
           mode="edit"
           initialMeal={editMeal}
           onCancel={() => setEditMeal(null)}

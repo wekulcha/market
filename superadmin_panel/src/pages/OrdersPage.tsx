@@ -18,10 +18,10 @@ function formatWhen(iso: string | undefined): string {
 }
 
 const STATUS_RU: Record<string, string> = {
-  CREATED: "Создан",
-  ACCEPTED: "Принят",
-  COOKING: "Готовится",
-  DELIVERY: "В доставке",
+  CREATED: "Принят",
+  ACCEPTED: "Собирается",
+  COOKING: "Собирается",
+  DELIVERY: "Собирается",
   DONE: "Завершён",
   CANCELLED: "Отменён",
 };

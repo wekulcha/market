@@ -4,7 +4,7 @@ import { fetchMarketRestaurant } from '../../api/restaurants';
 import { createOrder } from '../../api/orders';
 import { ApiError } from '../../api/client';
 import { updateUserProfile } from '../../api/users';
-import { MARKET_BRAND_NAME } from '../../config/market';
+import { MARKET_BRAND_NAME, MARKET_MIN_ORDER_TOTAL } from '../../config/market';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -17,6 +17,7 @@ import {
   formatLocationShort,
   parseLocationParts,
 } from '../../utils/locationFormat';
+import { deliveryCutoffHint, deliveryPromiseText } from '../../utils/deliveryPromise';
 
 function phoneDigitsToLocal10(stored: string | null): string {
   if (!stored || stored.startsWith('tg-')) return '';
@@ -47,6 +48,9 @@ export function CheckoutPage() {
   const deliveryFee = 0;
   const serviceFee = 0;
   const total = itemsTotal + deliveryFee + serviceFee;
+  const missingToMinimum = Math.max(0, MARKET_MIN_ORDER_TOTAL - itemsTotal);
+  const deliveryText = deliveryPromiseText(selectedRestaurant?.ordersAcceptTo);
+  const deliveryHint = deliveryCutoffHint(selectedRestaurant?.ordersAcceptTo);
 
   const [street, setStreet] = useState<string>(MARKET_STREETS[0]);
   const [house, setHouse] = useState('');
@@ -110,6 +114,11 @@ export function CheckoutPage() {
       return;
     }
 
+    if (itemsTotal < MARKET_MIN_ORDER_TOTAL) {
+      setErrorMessage(`Минимальная сумма заказа — ${MARKET_MIN_ORDER_TOTAL} ₽. Добавьте товаров ещё на ${missingToMinimum.toFixed(0)} ₽.`);
+      return;
+    }
+
     if (!selectedRestaurant) {
       setErrorMessage('Магазин не настроен. Попробуйте обновить страницу.');
       return;
@@ -170,7 +179,7 @@ export function CheckoutPage() {
       const response = await createOrder(payload);
       void updateUserProfile(currentUser.id, { address: deliveryAddr }).catch(() => {});
       clearCart();
-      setSuccessMessage(`Заказ №${response.id} успешно создан.`);
+      setSuccessMessage(`Заказ №${response.id} успешно создан. ${deliveryText}.`);
       setTimeout(() => {
         navigate('/catalog');
       }, 1500);
@@ -192,6 +201,7 @@ export function CheckoutPage() {
     submitting ||
     marketLoading ||
     total <= 0 ||
+    itemsTotal < MARKET_MIN_ORDER_TOTAL ||
     !selectedRestaurant ||
     !authReady ||
     !currentUser ||
@@ -230,7 +240,9 @@ export function CheckoutPage() {
           <div className="text-sm font-semibold text-slate-900">
             {selectedRestaurant?.name ?? MARKET_BRAND_NAME}
           </div>
-          <div className="text-xs text-slate-500 mt-1">Доставка продуктов</div>
+          <div className="text-xs text-slate-500 mt-1">
+            {deliveryText}. {deliveryHint}
+          </div>
         </div>
 
         {marketError && (
@@ -248,6 +260,7 @@ export function CheckoutPage() {
 
         <div className="bg-white rounded-2xl p-3 shadow-sm space-y-3">
           <div className="text-sm font-semibold text-slate-900">Адрес доставки</div>
+          <p className="text-[11px] text-slate-500">{deliveryHint}</p>
           <p className="text-[11px] text-slate-500">
             {savedDeliveryAddress ? `Текущий адрес: ${savedDeliveryAddress}.` : 'Выберите улицу и заполните детали.'}
           </p>
@@ -359,6 +372,15 @@ export function CheckoutPage() {
             <span className="font-semibold">{itemsTotal.toFixed(0)} ₽</span>
           </div>
           <div className="flex justify-between text-slate-500">
+            <span>Минимальный заказ</span>
+            <span>{MARKET_MIN_ORDER_TOTAL} ₽</span>
+          </div>
+          {missingToMinimum > 0 && (
+            <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Добавьте товаров ещё на {missingToMinimum.toFixed(0)} ₽.
+            </div>
+          )}
+          <div className="flex justify-between text-slate-500">
             <span>Доставка</span>
             <span>{deliveryFee.toFixed(0)} ₽</span>
           </div>
@@ -431,4 +453,3 @@ function AddressInput({
     </div>
   );
 }
-

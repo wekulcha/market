@@ -16,32 +16,15 @@ def order_status_keyboard(order_id: int, status: str, is_paid: bool = False) -> 
             inline_keyboard=[
                 [
                     InlineKeyboardButton(text="❌ Отмена", callback_data=f"k:{order_id}:CAN"),
-                    InlineKeyboardButton(text="✅ Принят", callback_data=f"k:{order_id}:ACC"),
+                    InlineKeyboardButton(text="🧺 Собирается", callback_data=f"k:{order_id}:ACC"),
                 ]
             ]
         )
-    if status == "ACCEPTED":
+    if status == "ACCEPTED" or status in {"COOKING", "DELIVERY"}:
         return InlineKeyboardMarkup(
             inline_keyboard=[
                 [
-                    InlineKeyboardButton(text="👨‍🍳 Готовится", callback_data=f"k:{order_id}:COO"),
-                    InlineKeyboardButton(text="🚚 Доставка", callback_data=f"k:{order_id}:DEL"),
-                ]
-            ]
-        )
-    if status == "COOKING":
-        return InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="🚚 Доставка", callback_data=f"k:{order_id}:DEL"),
-                ]
-            ]
-        )
-    if status == "DELIVERY":
-        return InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="✔️ Готово", callback_data=f"k:{order_id}:DON"),
+                    InlineKeyboardButton(text="✔️ Завершён", callback_data=f"k:{order_id}:DON"),
                 ]
             ]
         )

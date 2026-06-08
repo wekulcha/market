@@ -17,16 +17,14 @@ import { printKitchenTicket } from "../../utils/printKitchenTicket";
 const STATUS_FLOW: AdminOrderStatusCode[] = [
   "CREATED",
   "ACCEPTED",
-  "COOKING",
-  "DELIVERY",
   "DONE",
 ];
 
 const STATUS_LABEL: Record<AdminOrderStatusCode, string> = {
-  CREATED: "В обработке",
-  ACCEPTED: "Принят",
-  COOKING: "Готовим",
-  DELIVERY: "Отправлен",
+  CREATED: "Принят",
+  ACCEPTED: "Собирается",
+  COOKING: "Собирается",
+  DELIVERY: "Собирается",
   DONE: "Завершён",
   CANCELLED: "Отменён",
 };
@@ -35,10 +33,17 @@ const STATUS_COLOR_CLASSES: Record<AdminOrderStatusCode, string> = {
   CREATED: "bg-amber-50 text-amber-800 border-amber-200",
   ACCEPTED: "bg-sky-50 text-sky-800 border-sky-200",
   COOKING: "bg-sky-50 text-sky-800 border-sky-200",
-  DELIVERY: "bg-violet-50 text-violet-800 border-violet-200",
+  DELIVERY: "bg-sky-50 text-sky-800 border-sky-200",
   DONE: "bg-emerald-50 text-emerald-800 border-emerald-200",
   CANCELLED: "bg-rose-50 text-rose-800 border-rose-200",
 };
+
+const STATUS_PICKER_OPTIONS: AdminOrderStatusCode[] = [
+  "CREATED",
+  "ACCEPTED",
+  "DONE",
+  "CANCELLED",
+];
 
 interface AdminOrdersTabProps {
   restaurantId: number;
@@ -50,6 +55,7 @@ interface AdminOrdersTabProps {
 function getNextStatus(
   current: AdminOrderStatusCode
 ): AdminOrderStatusCode | null {
+  if (current === "COOKING" || current === "DELIVERY") return "DONE";
   const idx = STATUS_FLOW.indexOf(current);
   if (idx === -1 || idx === STATUS_FLOW.length - 1) return null;
   return STATUS_FLOW[idx + 1];
@@ -280,7 +286,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </button>
           {statusPickerOpen && (
             <div className="absolute right-0 mt-1 w-36 bg-white rounded-2xl shadow-lg border border-slate-100 z-20">
-              {(Object.keys(STATUS_LABEL) as AdminOrderStatusCode[]).map(
+              {STATUS_PICKER_OPTIONS.map(
                 (s) => (
                   <button
                     key={s}
@@ -589,10 +595,8 @@ export const AdminOrdersTab: React.FC<AdminOrdersTabProps> = ({
 
   const filters: { key: AdminOrderFilterStatus; label: string }[] = [
     { key: "ALL", label: "Все" },
-    { key: "CREATED", label: "В обработке" },
-    { key: "ACCEPTED", label: "Принят" },
-    { key: "COOKING", label: "Готовим" },
-    { key: "DELIVERY", label: "Отправлен" },
+    { key: "CREATED", label: "Принят" },
+    { key: "ACCEPTED", label: "Собирается" },
     { key: "DONE", label: "Завершён" },
     { key: "CANCELLED", label: "Отменён" },
   ];

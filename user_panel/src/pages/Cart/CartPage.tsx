@@ -3,15 +3,21 @@ import { MiniAppShell } from '../../layout/MiniAppShell';
 import { Header } from '../../layout/Header';
 import { useCart } from '../../context/CartContext';
 import { CartItemRow } from '../../components/cart/CartItemRow';
+import { MARKET_MIN_ORDER_TOTAL } from '../../config/market';
+import { useAppContext } from '../../context/AppContext';
+import { deliveryCutoffHint, deliveryPromiseText } from '../../utils/deliveryPromise';
 
 export function CartPage() {
   const navigate = useNavigate();
   const { items } = useCart();
+  const { selectedRestaurant } = useAppContext();
 
   const itemsTotal = items.reduce(
     (sum, item) => sum + item.meal.price * item.quantity,
     0
   );
+  const missingToMinimum = Math.max(0, MARKET_MIN_ORDER_TOTAL - itemsTotal);
+  const canCheckout = items.length > 0 && missingToMinimum === 0;
 
   return (
     <MiniAppShell>
@@ -28,7 +34,7 @@ export function CartPage() {
         <div className="bg-slate-100 rounded-2xl px-4 py-3 text-sm text-slate-700 flex flex-col gap-1">
           <div className="font-semibold">Доставка</div>
           <div className="text-xs text-slate-500">
-            Адрес доставки будет указан на следующем шаге.
+            {deliveryPromiseText(selectedRestaurant?.ordersAcceptTo)}. {deliveryCutoffHint(selectedRestaurant?.ordersAcceptTo)}
           </div>
         </div>
 
@@ -58,6 +64,11 @@ export function CartPage() {
                 <span className="font-semibold">{itemsTotal.toFixed(0)} ₽</span>
               </div>
             </div>
+            {missingToMinimum > 0 && (
+              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Минимальная сумма заказа — {MARKET_MIN_ORDER_TOTAL} ₽. Добавьте товаров ещё на {missingToMinimum.toFixed(0)} ₽.
+              </div>
+            )}
           </>
         )}
       </div>
@@ -66,10 +77,18 @@ export function CartPage() {
       {items.length > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[430px] px-4 z-20">
           <button
-            onClick={() => navigate('/checkout', { replace: true })}
-            className="w-full bg-slate-900 text-white text-sm font-semibold py-3 rounded-2xl shadow-lg hover:bg-slate-800 transition-colors"
+            disabled={!canCheckout}
+            onClick={() => {
+              if (canCheckout) navigate('/checkout', { replace: true });
+            }}
+            className={
+              'w-full text-sm font-semibold py-3 rounded-2xl shadow-lg transition-colors ' +
+              (canCheckout
+                ? 'bg-slate-900 text-white hover:bg-slate-800'
+                : 'bg-slate-300 text-slate-500 cursor-not-allowed')
+            }
           >
-            ДАЛЕЕ
+            {canCheckout ? 'ДАЛЕЕ' : `МИНИМУМ ${MARKET_MIN_ORDER_TOTAL} ₽`}
           </button>
         </div>
       )}

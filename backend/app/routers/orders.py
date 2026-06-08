@@ -37,6 +37,7 @@ from app.services.restaurant_hours import msk_today_utc_naive_bounds, restaurant
 from app.services.telegram_notifier import notify_order_placed, notify_user_status_changed
 
 router = APIRouter(prefix="/api/v1/orders", tags=["orders"])
+MIN_ORDER_ITEMS_TOTAL = Decimal("500")
 
 
 def _to_dto(order: Order) -> OrderDto:
@@ -536,6 +537,22 @@ async def checkout(
             400,
             f"Нет в наличии: {', '.join(unavailable)}",
         )
+    if not lines_payload:
+        raise HTTPException(400, "В заказе нет доступных товаров.")
+
+    calculated_items_total = sum(
+        (unit_price * qty for _, unit_price, qty in lines_payload),
+        Decimal("0"),
+    )
+    if calculated_items_total < MIN_ORDER_ITEMS_TOTAL:
+        raise HTTPException(
+            400,
+            f"Минимальная сумма заказа — {MIN_ORDER_ITEMS_TOTAL:.0f} ₽.",
+        )
+
+    delivery_fee = body.deliveryFee or Decimal(0)
+    service_fee = body.serviceFee or Decimal(0)
+    total = calculated_items_total + delivery_fee + service_fee
 
     tn = (body.tableNumber.strip() if body.tableNumber else None) or None
     comment = (body.comment.strip() if body.comment else None) or None
@@ -553,10 +570,10 @@ async def checkout(
         created_at=datetime.now(),
         updated_at=datetime.now(),
         order_type=OrderType(body.orderType),
-        items_total=body.itemsTotal or Decimal(0),
-        delivery_fee=body.deliveryFee or Decimal(0),
-        service_fee=body.serviceFee or Decimal(0),
-        total=body.total or Decimal(0),
+        items_total=calculated_items_total,
+        delivery_fee=delivery_fee,
+        service_fee=service_fee,
+        total=total,
         is_paid=False,
     )
     db.add(order)

@@ -12,10 +12,10 @@ from config import (
 )
 
 STATUS_RU = {
-    "CREATED": "Создан",
-    "ACCEPTED": "Принят",
-    "COOKING": "Готовится",
-    "DELIVERY": "В доставке",
+    "CREATED": "Принят",
+    "ACCEPTED": "Собирается",
+    "COOKING": "Собирается",
+    "DELIVERY": "Собирается",
     "DONE": "Завершён",
     "CANCELLED": "Отменён",
 }
