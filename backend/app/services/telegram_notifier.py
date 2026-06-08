@@ -61,6 +61,31 @@ def _compact_place_text(v: str | None) -> str:
     return t
 
 
+def _format_admin_delivery_address(address: str | None) -> str:
+    if not address:
+        return "—"
+    raw = " ".join(address.split())
+    parts = [part.strip() for part in raw.split("·")]
+    if len(parts) >= 5:
+        street, house, entrance, floor, apartment = parts[:5]
+        map_parts = [
+            street,
+            f"д. {house}" if house else "",
+            f"п. {entrance}" if entrance else "",
+        ]
+        map_text = ", ".join(part for part in map_parts if part)
+        details: list[str] = []
+        if floor and apartment:
+            details.append(f"кв. {floor}-{apartment}")
+        elif apartment:
+            details.append(f"кв. {apartment}")
+        elif floor:
+            details.append(f"эт. {floor}")
+        suffix = f", {_esc(', '.join(details))}" if details else ""
+        return f"<code>{_esc(map_text)}</code>{suffix}"
+    return _esc(raw)
+
+
 def _username_at(username: str | None) -> str:
     if not username:
         return "—"
@@ -138,19 +163,16 @@ def _format_admin_new_order(order: Order, lines: list[OrderPosition]) -> str:
     phone = _phone_clickable(user.phone)
     status_ru = _status_ru(order.status)
     paid = "✅ Оплачен" if getattr(order, "is_paid", False) else "❌ Не оплачен"
-    delivery_day = delivery_day_label(order.restaurant)
-    cutoff = restaurant_delivery_cutoff(order.restaurant)
     if _enum_key(order.order_type) == "DINE_IN":
         place = f"🪑 Место: <b>{_esc(_compact_place_text(order.table_number))}</b>"
     else:
-        place = f"🚚 Адрес: <b>{_esc(_compact_place_text(order.delivery_address))}</b>"
+        place = f"🚚 Адрес: {_format_admin_delivery_address(order.delivery_address)}"
     parts = [
         "🔔 <b>Новый заказ</b>",
         "━━━━━━━━━━━━━━",
         f"№ <code>{order.id}</code> · <b>{status_ru}</b>",
         f"👤 {uname} · {phone}",
         f"{place}",
-        f"🚚 Доставим: <b>{delivery_day}</b> · дедлайн {cutoff}",
         f"💰 <b>{order.total} ₽</b> · {paid}",
         "",
         "<b>Позиции:</b>",

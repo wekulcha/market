@@ -44,7 +44,6 @@ const AnalyticsSummaryCards: React.FC<AnalyticsSummaryCardsProps> = ({
     orders_count,
     avg_check,
     delivery_orders,
-    dine_in_orders,
     paid_orders_count,
     unpaid_orders_count,
     paid_revenue,
@@ -53,7 +52,6 @@ const AnalyticsSummaryCards: React.FC<AnalyticsSummaryCardsProps> = ({
 
   const totalOrders = orders_count || 1;
   const deliveryShare = Math.round((delivery_orders / totalOrders) * 100);
-  const dineInShare = Math.round((dine_in_orders / totalOrders) * 100);
 
   return (
     <div className="grid justify-start gap-2 [grid-template-columns:repeat(auto-fit,minmax(190px,220px))]">
@@ -90,25 +88,15 @@ const AnalyticsSummaryCards: React.FC<AnalyticsSummaryCardsProps> = ({
         <div className="text-[10px] text-violet-700">выручка / заказы</div>
       </div>
 
-      {/* Delivery vs Dine-in */}
+      {/* Delivery */}
       <div className="bg-amber-50 rounded-2xl p-3 border border-amber-100 shadow-sm flex flex-col gap-1">
         <div className="text-[10px] text-amber-700 uppercase font-semibold">
-          Формат
+          Доставка
         </div>
-        <div className="flex items-center justify-between text-[10px] text-amber-800">
-          <div>
-            Доставка:{" "}
-            <span className="font-semibold">
-              {delivery_orders} ({deliveryShare}%)
-            </span>
-          </div>
-          <div>
-            На месте:{" "}
-            <span className="font-semibold">
-              {dine_in_orders} ({dineInShare}%)
-            </span>
-          </div>
+        <div className="text-sm font-bold text-amber-900">
+          {delivery_orders} заказов
         </div>
+        <div className="text-[10px] text-amber-700">{deliveryShare}% от всех заказов</div>
         <div className="h-2 rounded-full bg-amber-100 overflow-hidden mt-1">
           <div
             className="h-full bg-amber-400"
@@ -211,17 +199,28 @@ const STATUS_LABEL: Record<string, string> = {
   CANCELLED: "Отменён",
 };
 
+type AnalyticsView = "dashboard" | "today_orders" | "today_totals";
+
+interface TodayTotalItem {
+  mealId: number;
+  name: string;
+  quantity: number;
+  orderIds: number[];
+}
+
 export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
   restaurantId,
 }) => {
   const [period, setPeriod] = useState<AnalyticsPeriod>("today");
-  const [view, setView] = useState<"dashboard" | "today_orders">("dashboard");
+  const [view, setView] = useState<AnalyticsView>("dashboard");
   const [summary, setSummary] = useState<AdminAnalyticsSummary | null>(null);
   const [daily, setDaily] = useState<AdminAnalyticsDailySeries | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [todayOrders, setTodayOrders] = useState<AdminOrder[]>([]);
   const [todayLoading, setTodayLoading] = useState(false);
+  const [todayTotals, setTodayTotals] = useState<TodayTotalItem[]>([]);
+  const [checkedTotals, setCheckedTotals] = useState<Record<number, boolean>>({});
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
 
   useEffect(() => {
@@ -249,16 +248,47 @@ export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
   }, [restaurantId, period]);
 
   useEffect(() => {
-    if (!restaurantId || Number.isNaN(restaurantId) || view !== "today_orders") return;
+    if (!restaurantId || Number.isNaN(restaurantId) || !["today_orders", "today_totals"].includes(view)) return;
     let cancelled = false;
     const loadToday = async () => {
       try {
         setTodayLoading(true);
         const data = await fetchAdminOrders(restaurantId, "ALL", { todayOnly: true });
-        if (!cancelled) setTodayOrders(data);
+        if (cancelled) return;
+        setTodayOrders(data);
+        if (view === "today_totals") {
+          const activeOrders = data.filter((order) => order.status !== "CANCELLED");
+          const positionGroups = new Map<number, TodayTotalItem>();
+          await Promise.all(
+            activeOrders.map(async (order) => {
+              const positions = await fetchOrderPositions(order.id);
+              for (const position of positions) {
+                const group = positionGroups.get(position.meal_id) ?? {
+                  mealId: position.meal_id,
+                  name: position.name,
+                  quantity: 0,
+                  orderIds: [],
+                };
+                group.quantity += position.quantity;
+                if (!group.orderIds.includes(order.id)) {
+                  group.orderIds.push(order.id);
+                }
+                positionGroups.set(position.meal_id, group);
+              }
+            })
+          );
+          if (!cancelled) {
+            setTodayTotals(
+              [...positionGroups.values()].sort((a, b) => a.name.localeCompare(b.name, "ru"))
+            );
+          }
+        }
       } catch (e) {
         console.error(e);
-        if (!cancelled) setTodayOrders([]);
+        if (!cancelled) {
+          setTodayOrders([]);
+          setTodayTotals([]);
+        }
       } finally {
         if (!cancelled) setTodayLoading(false);
       }
@@ -282,6 +312,8 @@ export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
     { key: "7d", label: "7 дней" },
     { key: "30d", label: "30 дней" },
   ];
+  const nonCancelledTodayOrders = todayOrders.filter((order) => order.status !== "CANCELLED");
+  const checkedTotalsCount = todayTotals.filter((item) => checkedTotals[item.mealId]).length;
 
   return (
     <div className="space-y-3">
@@ -316,6 +348,18 @@ export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
           }
         >
           Заказы сегодня
+        </button>
+        <button
+          type="button"
+          onClick={() => setView("today_totals")}
+          className={
+            "px-3 py-1.5 rounded-full text-[11px] font-medium border transition-colors whitespace-nowrap " +
+            (view === "today_totals"
+              ? "bg-slate-900 text-white border-slate-900"
+              : "bg-slate-50 text-slate-700 border-slate-200")
+          }
+        >
+          Общие заказы
         </button>
       </div>
 
@@ -393,6 +437,71 @@ export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {view === "today_totals" && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className="rounded-2xl bg-white border border-slate-100 px-3 py-2 shadow-sm">
+              <div className="text-[10px] uppercase font-semibold text-slate-400">Заказы</div>
+              <div className="text-sm font-bold text-slate-900">{nonCancelledTodayOrders.length}</div>
+            </div>
+            <div className="rounded-2xl bg-white border border-slate-100 px-3 py-2 shadow-sm">
+              <div className="text-[10px] uppercase font-semibold text-slate-400">Позиции</div>
+              <div className="text-sm font-bold text-slate-900">{todayTotals.length}</div>
+            </div>
+            <div className="rounded-2xl bg-white border border-slate-100 px-3 py-2 shadow-sm">
+              <div className="text-[10px] uppercase font-semibold text-slate-400">Собрано</div>
+              <div className="text-sm font-bold text-slate-900">{checkedTotalsCount}/{todayTotals.length}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCheckedTotals({})}
+              className="rounded-2xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-sm"
+            >
+              Сбросить отметки
+            </button>
+          </div>
+          {todayLoading && (
+            <div className="text-xs text-slate-500">Загрузка…</div>
+          )}
+          {!todayLoading && todayTotals.length === 0 && (
+            <div className="text-xs text-slate-500">Пока нет позиций за сегодня.</div>
+          )}
+          {!todayLoading && todayTotals.length > 0 && (
+            <div className="rounded-2xl border border-slate-100 overflow-hidden bg-white shadow-sm">
+              {todayTotals.map((item) => (
+                <label
+                  key={item.mealId}
+                  className="grid grid-cols-[28px_1fr_auto] gap-2 px-3 py-2 border-b border-slate-50 last:border-0 items-start"
+                >
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                    checked={Boolean(checkedTotals[item.mealId])}
+                    onChange={(event) =>
+                      setCheckedTotals((prev) => ({
+                        ...prev,
+                        [item.mealId]: event.target.checked,
+                      }))
+                    }
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-slate-900 truncate">
+                      {item.name}
+                    </span>
+                    <span className="block text-[10px] text-slate-500">
+                      Заказы: {item.orderIds.map((id) => `№${id}`).join(", ")}
+                    </span>
+                  </span>
+                  <span className="text-sm font-bold text-slate-900 whitespace-nowrap">
+                    ×{item.quantity}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

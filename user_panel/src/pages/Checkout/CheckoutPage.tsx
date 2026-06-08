@@ -260,7 +260,6 @@ export function CheckoutPage() {
 
         <div className="bg-white rounded-2xl p-3 shadow-sm space-y-3">
           <div className="text-sm font-semibold text-slate-900">Адрес доставки</div>
-          <p className="text-[11px] text-slate-500">{deliveryHint}</p>
           <p className="text-[11px] text-slate-500">
             {savedDeliveryAddress ? `Текущий адрес: ${savedDeliveryAddress}.` : 'Выберите улицу и заполните детали.'}
           </p>
