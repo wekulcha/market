@@ -10,6 +10,15 @@ export interface ProductCategory {
 
 export const PRODUCT_CATEGORIES: ProductCategory[] = [
   {
+    key: 'FOOD',
+    label: 'Еда',
+    shortLabel: 'Еда',
+    keywords: ['еда', 'продукты', 'готовая еда'],
+    background: '#fff4d8',
+    accent: '#d18b24',
+    visual: '🍽️ 🥗',
+  },
+  {
     key: 'VEGETABLES_HERBS',
     label: 'Овощи, грибы и зелень',
     shortLabel: 'Овощи, зелень, грибы',
@@ -56,8 +65,8 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   },
   {
     key: 'FISH_SEAFOOD',
-    label: 'Рыба и морепродукты',
-    shortLabel: 'Рыба, морепродукты',
+    label: 'Рыбы и морепродукты',
+    shortLabel: 'Рыбы, морепродукты',
     keywords: ['рыба', 'морепродукты', 'креветки'],
     background: '#d9f4f2',
     accent: '#2f9d96',
@@ -110,12 +119,21 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   },
   {
     key: 'SWEETS',
-    label: 'Сладости',
-    shortLabel: 'Сладости',
-    keywords: ['сладости', 'конфеты', 'шоколад', 'печенье'],
+    label: 'Десерты и сладости',
+    shortLabel: 'Десерты, сладости',
+    keywords: ['десерты', 'сладости', 'конфеты', 'шоколад', 'печенье'],
     background: '#f3ddff',
     accent: '#a35ac9',
     visual: '🍫 🍬',
+  },
+  {
+    key: 'JUICES_SODAS',
+    label: 'Соки и газировки',
+    shortLabel: 'Соки, газировки',
+    keywords: ['соки', 'газировки', 'напитки', 'лимонад'],
+    background: '#dff6ff',
+    accent: '#2d8cc4',
+    visual: '🧃 🥤',
   },
 ];
 
@@ -141,4 +159,3 @@ export function findProductCategory(key: string | null | undefined): ProductCate
   if (!key) return null;
   return PRODUCT_CATEGORIES.find((category) => category.key === key) ?? null;
 }
-

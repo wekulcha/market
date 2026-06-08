@@ -58,6 +58,15 @@ class ProductSeed(TypedDict):
 
 PRODUCTS: tuple[ProductSeed, ...] = (
     {
+        "name": "Готовый салат",
+        "description": "Свежий овощной салат в удобной упаковке.",
+        "category": "FOOD",
+        "price": "220",
+        "weight": 300,
+        "bg": "#fff4d8",
+        "fg": "#d18b24",
+    },
+    {
         "name": "Помидоры черри",
         "description": "Сладкие красные томаты для салатов и перекусов.",
         "category": "VEGETABLES_HERBS",
@@ -200,6 +209,15 @@ PRODUCTS: tuple[ProductSeed, ...] = (
         "weight": 90,
         "bg": "#f3ddff",
         "fg": "#8b4a2b",
+    },
+    {
+        "name": "Апельсиновый сок",
+        "description": "Сок без добавленного сахара, бутылка 1 л.",
+        "category": "JUICES_SODAS",
+        "price": "160",
+        "weight": 1000,
+        "bg": "#dff6ff",
+        "fg": "#f08a24",
     },
 )
 

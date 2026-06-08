@@ -2,6 +2,7 @@ import enum
 
 
 class MealCategory(str, enum.Enum):
+    FOOD = "FOOD"
     VEGETABLES_HERBS = "VEGETABLES_HERBS"
     FRUITS_BERRIES = "FRUITS_BERRIES"
     DAIRY_EGGS = "DAIRY_EGGS"
@@ -14,6 +15,7 @@ class MealCategory(str, enum.Enum):
     CANNED_PICKLES = "CANNED_PICKLES"
     BREAD_BAKERY = "BREAD_BAKERY"
     SWEETS = "SWEETS"
+    JUICES_SODAS = "JUICES_SODAS"
 
     # Legacy Kulcha categories are kept so old rows do not break reads/migrations.
     FIRST = "FIRST"
