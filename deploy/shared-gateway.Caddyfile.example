@@ -4,6 +4,9 @@
 # The existing gateway container must also be connected to the market compose
 # network, for example:
 #   docker network connect kulcha-market_default kulcha-gateway || true
+#
+# Start Market without its own Caddy gateway:
+#   MARKET_SHARED_GATEWAY=true ./deploy/up.sh
 
 market.wekulcha.ru {
     encode zstd gzip
