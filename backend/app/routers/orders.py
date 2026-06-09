@@ -26,15 +26,20 @@ from app.schemas.order import (
     OrderCheckoutRequest,
     OrderDto,
     OrderPaidPatchDto,
+    OrderReviewPatchDto,
     OrderStatusPatchDto,
 )
 from app.deps.superadmin import assert_superadmin
 from app.services import staff_access
 from app.services.session_auth import ensure_customer, get_user_from_bearer
 from app.services.telegram_auth import verify_bot_link_token, verify_telegram_init_data
-from app.services.phone_norm import is_proper_registered_phone
+from app.services.phone_norm import is_proper_registered_phone, is_russian_order_phone
 from app.services.restaurant_hours import msk_today_utc_naive_bounds, restaurant_accepts_orders_now
-from app.services.telegram_notifier import notify_order_placed_detached, notify_user_status_changed
+from app.services.telegram_notifier import (
+    notify_order_placed_detached,
+    notify_order_review_detached,
+    notify_user_status_changed,
+)
 
 router = APIRouter(prefix="/api/v1/orders", tags=["orders"])
 MIN_ORDER_ITEMS_TOTAL = Decimal("500")
@@ -58,6 +63,9 @@ def _to_dto(order: Order) -> OrderDto:
         serviceFee=order.service_fee,
         total=order.total,
         isPaid=order.is_paid,
+        reviewRating=order.review_rating,
+        reviewText=order.review_text,
+        reviewCreatedAt=order.review_created_at,
     )
 
 
@@ -502,6 +510,11 @@ async def checkout(
             403,
             "Вы не зарегистрировались. Зайдите в бот Kulcha Market, отправьте /start и поделитесь контактом.",
         )
+    if not is_russian_order_phone(customer.phone):
+        raise HTTPException(
+            403,
+            "Для заказа нужно указать и сохранить российский номер телефона.",
+        )
 
     if not body.items:
         raise HTTPException(400, "Invalid checkout payload")
@@ -670,6 +683,55 @@ async def cancel_my_order(
     await db.flush()
     await notify_user_status_changed(db, order_id)
     return _to_dto(order)
+
+
+@router.post("/{order_id}/review")
+async def patch_review(
+    order_id: int,
+    body: OrderReviewPatchDto,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(None, alias="Authorization"),
+    x_kulcha_bot_secret: str | None = Header(None, alias="X-Market-Bot-Secret"),
+):
+    if body.rating < 1 or body.rating > 5:
+        raise HTTPException(400, "Оценка должна быть от 1 до 5")
+
+    settings = get_settings()
+    bot_authorized = bool(
+        x_kulcha_bot_secret
+        and settings.bot_api_secret
+        and x_kulcha_bot_secret == settings.bot_api_secret
+    )
+    actor = None if bot_authorized else await get_user_from_bearer(db, authorization)
+    if not bot_authorized and not actor:
+        raise HTTPException(401, "Authorization bearer token is required")
+
+    result = await db.execute(
+        select(Order)
+        .options(joinedload(Order.user), joinedload(Order.restaurant), joinedload(Order.courier))
+        .where(Order.id == order_id)
+    )
+    order = result.unique().scalars().first()
+    if not order:
+        raise HTTPException(404, "Order not found")
+    if actor and order.user_id != actor.id:
+        raise HTTPException(403, "Forbidden")
+    if order.status != OrderStatus.DONE:
+        raise HTTPException(400, "Оставить отзыв можно только после завершения заказа.")
+
+    text = body.text.strip()[:1000] if body.text else None
+    order.review_rating = body.rating
+    if body.text is not None:
+        order.review_text = text
+    order.review_created_at = order.review_created_at or datetime.now()
+    order.updated_at = datetime.now()
+
+    await db.flush()
+    response = _to_dto(order)
+    await db.commit()
+    background_tasks.add_task(notify_order_review_detached, order_id)
+    return response
 
 
 @router.patch("/{order_id}/paid")

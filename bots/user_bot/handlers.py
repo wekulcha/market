@@ -1,7 +1,7 @@
 import html
 import httpx
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, Message
 from aiogram.filters import CommandStart
 
 from config import (
@@ -24,9 +24,11 @@ ORDER_TYPE_RU = {
     "DELIVERY": "Доставка",
     "DINE_IN": "На месте",
 }
+KNOWN_BUTTON_TEXTS = {"📦 Статус заказа", "💬 Поддержка", "🛒 Каталог", "🧺 Корзина", "👤 Профиль"}
 from keyboards import main_menu_keyboard, request_phone_keyboard
 
 router = Router()
+PENDING_REVIEWS: dict[int, tuple[int, int]] = {}
 
 
 def _bot_headers() -> dict:
@@ -40,11 +42,28 @@ def _has_registered_phone(phone: str | None) -> bool:
     if not phone or phone.startswith("tg-"):
         return False
     digits = "".join(ch for ch in phone if ch.isdigit())
+    return 6 <= len(digits) <= 15
+
+
+def _has_russian_order_phone(phone: str | None) -> bool:
+    if not phone or phone.startswith("tg-"):
+        return False
+    digits = "".join(ch for ch in phone if ch.isdigit())
     if len(digits) == 10 and digits.startswith("9"):
         return True
-    if len(digits) == 11 and digits.startswith(("7", "8")):
-        return True
-    return False
+    return len(digits) == 11 and digits.startswith(("7", "8"))
+
+
+async def _save_order_review(order_id: int, rating: int, text: str | None = None) -> bool:
+    if not BOT_API_SECRET:
+        return False
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.post(
+            f"{API_BASE}/orders/{order_id}/review",
+            headers={**_bot_headers(), "Content-Type": "application/json"},
+            json={"rating": rating, "text": text},
+        )
+    return 200 <= response.status_code < 300
 
 
 @router.message(CommandStart())
@@ -57,6 +76,15 @@ async def cmd_start(message: Message):
             if r.status_code == 200 and r.json():
                 user = r.json()[0]
                 if _has_registered_phone(user.get("phone")):
+                    if not _has_russian_order_phone(user.get("phone")):
+                        await message.answer(
+                            "<b>Добро пожаловать в Kulcha Market!</b>\n"
+                            "━━━━━━━━━━━━━━\n"
+                            "Контакт сохранён. Для заказа нужно указать российский номер телефона "
+                            "в профиле или при оформлении.",
+                            reply_markup=main_menu_keyboard(),
+                        )
+                        return
                     await message.answer(
                         "<b>Добро пожаловать в Kulcha Market!</b>\n"
                         "━━━━━━━━━━━━━━\n"
@@ -104,6 +132,15 @@ async def on_contact(message: Message):
                 },
             )
             if r.status_code in (200, 201):
+                if not _has_russian_order_phone(phone):
+                    await message.answer(
+                        "<b>Контакт сохранён.</b>\n"
+                        "━━━━━━━━━━━━━━\n"
+                        "Для заказа нужно указать российский номер телефона в профиле "
+                        "или при оформлении.",
+                        reply_markup=main_menu_keyboard(),
+                    )
+                    return
                 await message.answer(
                     "<b>Готово!</b>\n"
                     "━━━━━━━━━━━━━━\n"
@@ -120,6 +157,41 @@ async def on_contact(message: Message):
                 f"Ошибка сети: <code>{e}</code>",
                 reply_markup=main_menu_keyboard(),
             )
+
+
+@router.callback_query(F.data.startswith("r:"))
+async def on_review_rating(query: CallbackQuery):
+    parts = (query.data or "").split(":")
+    if len(parts) != 3:
+        await query.answer("Не удалось распознать оценку.", show_alert=True)
+        return
+    try:
+        order_id = int(parts[1])
+        rating = int(parts[2])
+    except ValueError:
+        await query.answer("Не удалось распознать оценку.", show_alert=True)
+        return
+    if rating < 1 or rating > 5:
+        await query.answer("Оценка должна быть от 1 до 5.", show_alert=True)
+        return
+
+    ok = await _save_order_review(order_id, rating)
+    if not ok:
+        await query.answer("Не удалось сохранить оценку. Попробуйте позже.", show_alert=True)
+        return
+
+    user_id = query.from_user.id
+    PENDING_REVIEWS[user_id] = (order_id, rating)
+    await query.answer("Спасибо за оценку!")
+    if query.message:
+        try:
+            await query.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        await query.message.answer(
+            "Спасибо за оценку! Если хотите, напишите отзыв одним сообщением — "
+            "мы передадим его команде."
+        )
 
 
 @router.message(F.text == "📦 Статус заказа")
@@ -185,6 +257,30 @@ async def support(message: Message):
     )
 
 
+@router.message(
+    lambda message: (
+        message.from_user is not None
+        and message.from_user.id in PENDING_REVIEWS
+        and bool(message.text)
+        and not message.text.startswith("/")
+        and message.text not in KNOWN_BUTTON_TEXTS
+    )
+)
+async def on_review_text(message: Message):
+    pending = PENDING_REVIEWS.pop(message.from_user.id, None)
+    if not pending:
+        return
+    order_id, rating = pending
+    text = (message.text or "").strip()
+    if not text:
+        return
+    ok = await _save_order_review(order_id, rating, text[:1000])
+    if ok:
+        await message.answer("Спасибо за отзыв! Ждём вас снова.")
+    else:
+        await message.answer("Не удалось сохранить отзыв. Попробуйте позже или напишите в поддержку.")
+
+
 @router.message(F.text == "🛒 Каталог")
 async def catalog_fallback(message: Message):
     if USER_MINI_APP_BASE.startswith("https://"):
@@ -204,3 +300,14 @@ async def profile_fallback(message: Message):
     if USER_MINI_APP_BASE.startswith("https://"):
         return
     await message.answer(f"Откройте в браузере: {USER_MINI_APP_BASE.rstrip('/')}/profile")
+
+
+@router.message(F.text)
+async def unknown_text(message: Message):
+    if (message.text or "").startswith("/"):
+        return
+    await message.answer(
+        "Я пока не понимаю такие сообщения.\n"
+        "По всем вопросам и предложениям напишите админам: "
+        "@isfarinski @khodzha97 @wekulcha_sup_bot"
+    )

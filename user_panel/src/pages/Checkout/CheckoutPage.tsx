@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { Header } from '../../layout/Header';
 import { MiniAppShell } from '../../layout/MiniAppShell';
+import { requestTelegramContact } from '../../telegram/initTelegram';
 import type { CreateOrderPayload, PaymentMethod } from '../../types/order';
 import {
   MARKET_STREETS,
@@ -18,20 +19,13 @@ import {
   parseLocationParts,
 } from '../../utils/locationFormat';
 import { deliveryCutoffHint, deliveryPromiseText } from '../../utils/deliveryPromise';
-
-function phoneDigitsToLocal10(stored: string | null): string {
-  if (!stored || stored.startsWith('tg-')) return '';
-  const d = stored.replace(/\D/g, '');
-  if (d.length === 11 && d.startsWith('7')) return d.slice(1);
-  if (d.length === 10) return d;
-  return '';
-}
-
-function isRegisteredPhone(phone: string | null): boolean {
-  if (!phone || phone.startsWith('tg-')) return false;
-  const d = phone.replace(/\D/g, '');
-  return d.length === 11 && d.startsWith('7');
-}
+import {
+  isRegisteredPhone,
+  isRussianPhone,
+  normalizePhoneInput,
+  normalizeRussianPhoneInput,
+  phoneToInputValue,
+} from '../../utils/phoneFormat';
 
 function sanitizeUsername(username: string | null): string {
   if (!username) return '';
@@ -59,11 +53,13 @@ export function CheckoutPage() {
   const [apartment, setApartment] = useState('');
   const [comment, setComment] = useState('');
   const [username, setUsername] = useState<string>('');
-  const [phoneLocal, setPhoneLocal] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [marketLoading, setMarketLoading] = useState(false);
   const [marketError, setMarketError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [registeringContact, setRegisteringContact] = useState(false);
+  const [registrationMessage, setRegistrationMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -91,7 +87,7 @@ export function CheckoutPage() {
 
   useEffect(() => {
     if (!currentUser) return;
-    setPhoneLocal((prev) => (prev.trim() ? prev : phoneDigitsToLocal10(currentUser.phone)));
+    setPhoneInput((prev) => (prev.trim() ? prev : phoneToInputValue(currentUser.phone)));
     setUsername(sanitizeUsername(currentUser.username));
   }, [currentUser]);
 
@@ -135,16 +131,15 @@ export function CheckoutPage() {
     }
 
     if (!isRegisteredPhone(currentUser.phone)) {
-      setErrorMessage(`Вы не зарегистрировались. Зайдите в бот ${MARKET_BRAND_NAME}, отправьте /start и поделитесь контактом.`);
+      setErrorMessage('Чтобы оформить заказ, сначала поделитесь контактом через Telegram.');
       return;
     }
 
-    const digits = phoneLocal.replace(/\D/g, '').slice(0, 10);
-    if (digits.length !== 10) {
-      setErrorMessage('Введите 10 цифр номера после +7.');
+    const phoneForApi = normalizeRussianPhoneInput(phoneInput);
+    if (!phoneForApi) {
+      setErrorMessage('Для заказа нужен российский номер. Укажите номер формата +7 900 123-45-67.');
       return;
     }
-    const phoneForApi = `7${digits}`;
 
     if (!street.trim() || !house.trim() || !entrance.trim() || !floor.trim() || !apartment.trim()) {
       setErrorMessage('Укажите улицу, дом, подъезд, этаж и квартиру.');
@@ -195,18 +190,56 @@ export function CheckoutPage() {
     }
   };
 
-  const phoneDigitsOk = phoneLocal.replace(/\D/g, '').length === 10;
+  const handleRegisterContact = async () => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setRegistrationMessage(null);
+
+    if (!authReady) {
+      setErrorMessage('Подождите немного, мы еще проверяем вход в mini app.');
+      return;
+    }
+    if (!currentUser) {
+      setErrorMessage(authError ?? `Откройте мини-приложение из Telegram через кнопку в боте ${MARKET_BRAND_NAME}.`);
+      return;
+    }
+
+    try {
+      setRegisteringContact(true);
+      const shared = await requestTelegramContact();
+      if (!shared) {
+        setErrorMessage('Telegram не получил контакт. Без телефона оформить заказ не получится.');
+        return;
+      }
+      setRegistrationMessage('Контакт отправлен. Проверяем регистрацию...');
+      [900, 2200, 4000].forEach((delay) => {
+        window.setTimeout(() => {
+          void reloadAuth();
+        }, delay);
+      });
+    } finally {
+      setRegisteringContact(false);
+    }
+  };
+
+  const normalizedPhone = normalizePhoneInput(phoneInput);
+  const phoneForApi = normalizeRussianPhoneInput(phoneInput);
+  const phoneDigitsOk = phoneForApi !== null;
+  const needsRegistration = Boolean(authReady && currentUser && !isRegisteredPhone(currentUser.phone));
+  const needsRussianPhone = Boolean(!needsRegistration && normalizedPhone && !isRussianPhone(phoneInput));
   const savedDeliveryAddress = formatLocationShort(currentUser?.address ?? null);
-  const submitDisabled =
+  const actionDisabled =
     submitting ||
+    registeringContact ||
     marketLoading ||
     total <= 0 ||
     itemsTotal < MARKET_MIN_ORDER_TOTAL ||
     !selectedRestaurant ||
     !authReady ||
-    !currentUser ||
-    !isRegisteredPhone(currentUser.phone) ||
-    !phoneDigitsOk;
+    !currentUser;
+  const submitDisabled =
+    actionDisabled ||
+    (!needsRegistration && !phoneDigitsOk);
 
   return (
     <MiniAppShell>
@@ -311,28 +344,35 @@ export function CheckoutPage() {
             </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1">Телефон</label>
-              <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white">
-                <span className="px-3 py-2 text-sm bg-slate-100 text-slate-600 border-r border-slate-200 select-none">
-                  +7
-                </span>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel-national"
-                  className="flex-1 min-w-0 px-3 py-2 text-sm outline-none"
-                  placeholder="9001234567"
-                  value={phoneLocal}
-                  onChange={(e) => {
-                    const d = e.target.value.replace(/\D/g, '').slice(0, 10);
-                    setPhoneLocal(d);
-                  }}
-                />
-              </div>
+              <input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white"
+                placeholder="+7 900 123-45-67"
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value.slice(0, 24))}
+              />
             </div>
           </div>
           <p className="text-[11px] text-slate-400">
-            Телефон нужен, чтобы курьер или оператор могли с вами связаться.
+            Заказ можно оформить только на российский номер. Перед первым заказом Telegram должен подтвердить ваш контакт.
           </p>
+          {needsRussianPhone && (
+            <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Для заказа нужно указать и сохранить российский номер телефона.
+            </div>
+          )}
+          {needsRegistration && (
+            <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Чтобы оформить заказ, нужно один раз зарегистрироваться: Telegram попросит поделиться контактом.
+            </div>
+          )}
+          {registrationMessage && (
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              {registrationMessage}
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-2xl p-3 shadow-sm space-y-2">
@@ -409,7 +449,7 @@ export function CheckoutPage() {
             <button
               type="button"
               disabled={submitDisabled}
-              onClick={handleSubmit}
+              onClick={needsRegistration ? handleRegisterContact : handleSubmit}
               className={
                 'flex-[2] text-sm font-semibold py-2 rounded-xl text-center transition-colors ' +
                 (submitDisabled
@@ -417,9 +457,20 @@ export function CheckoutPage() {
                   : 'bg-slate-900 text-white hover:bg-slate-800')
               }
             >
-              {submitting ? 'Отправка...' : 'ЗАКАЗАТЬ'}
+              {needsRegistration
+                ? registeringContact
+                  ? 'РЕГИСТРАЦИЯ...'
+                  : 'ЗАРЕГИСТРИРОВАТЬСЯ'
+                : submitting
+                  ? 'Отправка...'
+                  : 'ЗАКАЗАТЬ'}
             </button>
           </div>
+          {needsRegistration && (
+            <div className="mt-2 rounded-2xl bg-amber-50 px-3 py-2 text-[11px] text-amber-800 shadow-sm border border-amber-100">
+              Это необходимо, чтобы мы могли принять заказ и связаться по доставке.
+            </div>
+          )}
         </div>
       )}
     </MiniAppShell>

@@ -23,6 +23,9 @@ class OrderDto(BaseModel):
     serviceFee: Decimal | None = None
     total: Decimal | None = None
     isPaid: bool | None = None
+    reviewRating: int | None = None
+    reviewText: str | None = None
+    reviewCreatedAt: datetime | None = None
 
 
 class OrderCheckoutLine(BaseModel):
@@ -50,6 +53,11 @@ class OrderStatusPatchDto(BaseModel):
 
 class OrderPaidPatchDto(BaseModel):
     isPaid: bool
+
+
+class OrderReviewPatchDto(BaseModel):
+    rating: int
+    text: str | None = None
 
 
 class DailyOrderPositionSummaryDto(BaseModel):

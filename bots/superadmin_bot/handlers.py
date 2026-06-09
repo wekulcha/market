@@ -1,3 +1,5 @@
+import asyncio
+
 import httpx
 from aiogram import Router, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
@@ -9,9 +11,12 @@ from config import (
     INTERNAL_API_SECRET,
     SUPERADMIN_MINI_APP_BASE,
     SUPPORT_LINK,
+    TELEGRAM_PROXY_URL,
+    USER_BOT_TOKEN,
 )
 
 router = Router()
+TEST_ADMIN_TELEGRAM_ID = 1038155901
 
 
 def _internal_headers() -> dict:
@@ -22,6 +27,57 @@ def _internal_headers() -> dict:
 
 def allowed(user_id: int) -> bool:
     return not ALLOWED_TELEGRAM_IDS or user_id in ALLOWED_TELEGRAM_IDS
+
+
+def _user_id(payload: dict) -> int | None:
+    raw = payload.get("id") or payload.get("telegramId")
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _has_registered_phone(phone: str | None) -> bool:
+    if not phone or str(phone).startswith("tg-"):
+        return False
+    digits = "".join(ch for ch in str(phone) if ch.isdigit())
+    return 6 <= len(digits) <= 15
+
+
+async def _fetch_users() -> list[dict]:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"{API_BASE}/users", timeout=15.0)
+    response.raise_for_status()
+    data = response.json()
+    return data if isinstance(data, list) else []
+
+
+async def _send_user_bot_message(client: httpx.AsyncClient, chat_id: int, text: str) -> bool:
+    if not USER_BOT_TOKEN:
+        return False
+    response = await client.post(
+        f"https://api.telegram.org/bot{USER_BOT_TOKEN}/sendMessage",
+        json={"chat_id": chat_id, "text": text, "disable_web_page_preview": True},
+        timeout=15.0,
+    )
+    if response.status_code < 200 or response.status_code >= 300:
+        return False
+    payload = response.json()
+    return bool(payload.get("ok"))
+
+
+async def _send_bulk(recipients: list[int], text: str) -> tuple[int, int]:
+    sent = 0
+    failed = 0
+    async with httpx.AsyncClient(proxy=TELEGRAM_PROXY_URL or None) as client:
+        for chat_id in recipients:
+            ok = await _send_user_bot_message(client, chat_id, text)
+            if ok:
+                sent += 1
+            else:
+                failed += 1
+            await asyncio.sleep(0.05)
+    return sent, failed
 
 
 @router.message(CommandStart())
@@ -39,9 +95,82 @@ async def cmd_start(message: Message):
     ])
     await message.answer(
         "Бот суперадмина Kulcha Market.\n"
-        "Команды: /health, /stats, /order <id>, /restaurant <id>, /user <telegram_id>",
+        "Команды: /health, /stats, /order <id>, /restaurant <id>, /user <telegram_id>, "
+        "/broadcast <текст>, /broadcast_test <me|registered|unregistered|id,id> <текст>",
         reply_markup=keyboard,
     )
+
+
+@router.message(Command("broadcast"), F.text)
+async def cmd_broadcast(message: Message):
+    if not allowed(message.from_user.id):
+        await message.answer("Нет доступа.")
+        return
+    text = message.text.partition(" ")[2].strip()
+    if not text:
+        await message.answer("Использование: /broadcast <текст сообщения>")
+        return
+    if not USER_BOT_TOKEN:
+        await message.answer("Не задан MARKET_USER_BOT_TOKEN для отправки через user bot.")
+        return
+    try:
+        users = await _fetch_users()
+        recipients = sorted({uid for uid in (_user_id(user) for user in users) if uid is not None})
+        if not recipients:
+            await message.answer("Нет пользователей для рассылки.")
+            return
+        await message.answer(f"Начинаю рассылку для {len(recipients)} пользователей.")
+        sent, failed = await _send_bulk(recipients, text)
+        await message.answer(f"Рассылка завершена. Отправлено: {sent}. Ошибок: {failed}.")
+    except Exception as e:
+        await message.answer(f"Ошибка рассылки: {e}")
+
+
+@router.message(Command("broadcast_test"), F.text)
+async def cmd_broadcast_test(message: Message):
+    if not allowed(message.from_user.id):
+        await message.answer("Нет доступа.")
+        return
+    parts = message.text.split(maxsplit=2)
+    if len(parts) < 3:
+        await message.answer("Использование: /broadcast_test <me|registered|unregistered|id,id> <текст>")
+        return
+    if not USER_BOT_TOKEN:
+        await message.answer("Не задан MARKET_USER_BOT_TOKEN для отправки через user bot.")
+        return
+
+    target, text = parts[1].strip(), parts[2].strip()
+    try:
+        recipients: list[int] = []
+        if target == "me":
+            recipients = [TEST_ADMIN_TELEGRAM_ID]
+        elif target in {"registered", "unregistered"}:
+            users = await _fetch_users()
+            want_registered = target == "registered"
+            for user in users:
+                if _has_registered_phone(user.get("phone")) == want_registered:
+                    uid = _user_id(user)
+                    if uid is not None:
+                        recipients = [uid]
+                        break
+        else:
+            recipients = [
+                int(item.strip())
+                for item in target.split(",")
+                if item.strip().lstrip("-").isdigit()
+            ]
+
+        recipients = sorted(set(recipients))
+        if not recipients:
+            await message.answer("Не нашёл получателей для тестовой рассылки.")
+            return
+        sent, failed = await _send_bulk(recipients, text)
+        await message.answer(
+            f"Тестовая рассылка: {', '.join(str(uid) for uid in recipients)}\n"
+            f"Отправлено: {sent}. Ошибок: {failed}."
+        )
+    except Exception as e:
+        await message.answer(f"Ошибка тестовой рассылки: {e}")
 
 
 @router.message(Command("health"))

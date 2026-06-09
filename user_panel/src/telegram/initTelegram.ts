@@ -4,6 +4,7 @@ declare global {
       WebApp?: {
         ready: () => void;
         expand?: () => void;
+        requestContact?: (callback?: (shared: boolean) => void) => void;
         initData?: string;
         /** Парсированные поля initData (в т.ч. start_param для deep link). */
         initDataUnsafe?: {
@@ -113,4 +114,19 @@ export function initTelegramWebApp(): void {
       theme.button_text_color
     );
   }
+}
+
+export function requestTelegramContact(): Promise<boolean> {
+  const webApp = typeof window === 'undefined' ? undefined : window.Telegram?.WebApp;
+  if (!webApp || typeof webApp.requestContact !== 'function') {
+    return Promise.resolve(false);
+  }
+
+  return new Promise((resolve) => {
+    try {
+      webApp.requestContact?.((shared) => resolve(Boolean(shared)));
+    } catch {
+      resolve(false);
+    }
+  });
 }

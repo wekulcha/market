@@ -66,6 +66,9 @@ class Order(Base):
     table_number: Mapped[str | None] = mapped_column(String, nullable=True)
     is_paid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     comment: Mapped[str | None] = mapped_column(String, nullable=True)
+    review_rating: Mapped[int | None] = mapped_column(nullable=True)
+    review_text: Mapped[str | None] = mapped_column(String, nullable=True)
+    review_created_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     user = relationship("User", lazy="joined")
     restaurant = relationship("Restaurant", lazy="joined")

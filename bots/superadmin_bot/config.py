@@ -1,6 +1,7 @@
 import os
 
 BOT_TOKEN = os.environ.get("MARKET_SUPERADMIN_BOT_TOKEN", "")
+USER_BOT_TOKEN = os.environ.get("MARKET_USER_BOT_TOKEN", "")
 TELEGRAM_PROXY_URL = os.environ.get("MARKET_TELEGRAM_PROXY_URL", "").strip()
 API_BASE = os.environ.get("MARKET_API_BASE", "http://localhost:8000/api/v1")
 INTERNAL_API_SECRET = os.environ.get("MARKET_INTERNAL_API_SECRET", "")

@@ -14,7 +14,7 @@ from app.models.order import Order
 from app.models.staff import Staff
 from app.models.user import User
 from app.schemas.user import UserDto, UserRestaurantDto
-from app.services.phone_norm import normalize_ru_phone_to_storage
+from app.services.phone_norm import normalize_phone_to_storage
 from app.services.session_auth import ensure_customer, get_user_from_bearer
 from app.services.telegram_auth import verify_bot_link_token, verify_telegram_init_data
 
@@ -97,7 +97,8 @@ async def get_all(
         u = result.scalars().first()
         return [_to_dto(u)] if u else []
     if phone:
-        result = await db.execute(select(User).where(User.phone == phone))
+        lookup_phone = normalize_phone_to_storage(phone) or phone
+        result = await db.execute(select(User).where(User.phone == lookup_phone))
         u = result.scalars().first()
         return [_to_dto(u)] if u else []
     if username:
@@ -178,9 +179,22 @@ async def create_user(
 
     result = await db.execute(select(User).where(User.id == tg_id))
     existing = result.scalars().first()
+    normalized_phone = normalize_phone_to_storage(dto.phone or "") if dto.phone else None
+    if dto.phone and not normalized_phone:
+        raise HTTPException(400, "Некорректный номер телефона")
+
     if existing:
         existing.username = dto.username or existing.username
-        existing.phone = dto.phone or existing.phone
+        if normalized_phone and normalized_phone != existing.phone:
+            result = await db.execute(select(User).where(User.phone == normalized_phone))
+            legacy = result.scalars().first()
+            if legacy and legacy.id != existing.id:
+                await db.execute(sa_update(Order).where(Order.user_id == legacy.id).values(user_id=existing.id))
+                await db.execute(sa_update(Staff).where(Staff.user_id == legacy.id).values(user_id=existing.id))
+                await db.execute(sa_update(Courier).where(Courier.user_id == legacy.id).values(user_id=existing.id))
+                await db.delete(legacy)
+                await db.flush()
+        existing.phone = normalized_phone or existing.phone
         if dto.email is not None:
             existing.email = dto.email
         if dto.address is not None:
@@ -188,8 +202,8 @@ async def create_user(
         await db.flush()
         return _to_dto(existing)
 
-    if dto.phone:
-        result = await db.execute(select(User).where(User.phone == dto.phone))
+    if normalized_phone:
+        result = await db.execute(select(User).where(User.phone == normalized_phone))
         legacy = result.scalars().first()
         if legacy and legacy.id != tg_id:
             await db.execute(sa_update(Order).where(Order.user_id == legacy.id).values(user_id=tg_id))
@@ -201,7 +215,7 @@ async def create_user(
     user = User(
         id=tg_id,
         username=dto.username or f"tg_{tg_id}",
-        phone=dto.phone or f"tg-{tg_id}",
+        phone=normalized_phone or f"tg-{tg_id}",
         email=dto.email,
         address=dto.address,
         registered_at=dto.registeredAt or datetime.now(),
@@ -224,9 +238,12 @@ async def update_user(
     if dto.username is not None:
         user.username = dto.username
     if dto.phone is not None:
-        norm = normalize_ru_phone_to_storage(dto.phone)
+        norm = normalize_phone_to_storage(dto.phone)
         if not norm:
             raise HTTPException(400, "Некорректный номер телефона")
+        duplicate = await db.execute(select(User).where(User.phone == norm, User.id != user_id))
+        if duplicate.scalars().first():
+            raise HTTPException(409, "Этот номер телефона уже используется")
         user.phone = norm
     if dto.email is not None:
         user.email = dto.email

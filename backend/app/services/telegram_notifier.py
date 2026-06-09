@@ -150,7 +150,15 @@ def _format_user_order_block(
         parts.append(f"\n🚚 Адрес: {_esc(order.delivery_address)}")
     if order.table_number:
         parts.append(f"\n🪑 Место: <b>{_esc(order.table_number)}</b>")
-    if is_update:
+    if _enum_key(order.status) == "DONE":
+        if order.review_rating:
+            parts.append(f"\n⭐ Спасибо за оценку: <b>{order.review_rating}⭐</b>")
+        else:
+            parts.append(
+                "\n⭐ <b>Оцените заказ</b>\n"
+                "Нажмите на оценку ниже. После оценки можно написать отзыв одним сообщением."
+            )
+    elif is_update:
         parts.append("\n<i>Статус обновлён. При следующем изменении пришлём новое сообщение.</i>")
     else:
         parts.append("\n<i>Мы пришлём обновление, когда статус изменится.</i>")
@@ -195,6 +203,36 @@ def _build_admin_keyboard(order_id: int) -> dict:
             ]
         ]
     }
+
+
+def _build_review_keyboard(order_id: int) -> dict:
+    return {
+        "inline_keyboard": [
+            [
+                {"text": f"{rating}⭐", "callback_data": f"r:{order_id}:{rating}"}
+                for rating in range(1, 6)
+            ]
+        ]
+    }
+
+
+def _format_admin_order_review(order: Order) -> str:
+    user = order.user
+    uname = _user_tg_link(user.username, user.id)
+    phone = _phone_clickable(user.phone)
+    rating = order.review_rating or "—"
+    parts = [
+        "⭐ <b>Отзыв по заказу</b>",
+        "━━━━━━━━━━━━━━",
+        f"№ <code>{order.id}</code> · {_esc(order.restaurant.name)}",
+        f"👤 {uname} · {phone}",
+        f"Оценка: <b>{rating}⭐</b>",
+    ]
+    if order.review_text:
+        parts.append(f"\n💬 {_esc(order.review_text)}")
+    else:
+        parts.append("\n<i>Пользователь оставил оценку без текста.</i>")
+    return "\n".join(parts)
 
 
 async def notify_order_placed(db: AsyncSession, order_id: int) -> None:
@@ -297,7 +335,60 @@ async def notify_user_status_changed(db: AsyncSession, order_id: int) -> None:
         await telegram_bot_client.delete_message(user_token, chat_id, old_mid)
 
     msg = _format_user_order_block(order, lines, "Обновление заказа", is_update=True)
-    mid = await telegram_bot_client.send_message(user_token, chat_id, msg)
+    keyboard = None
+    if _enum_key(order.status) == "DONE" and not order.review_rating:
+        keyboard = _build_review_keyboard(order.id)
+    mid = await telegram_bot_client.send_message(user_token, chat_id, msg, reply_markup=keyboard)
     if mid is not None:
         order.user_telegram_notify_message_id = mid
         await db.flush()
+
+
+async def notify_order_review(db: AsyncSession, order_id: int) -> None:
+    settings = get_settings()
+    admin_token = settings.admin_bot_token
+    if not admin_token:
+        return
+
+    result = await db.execute(
+        select(Order)
+        .options(joinedload(Order.user), joinedload(Order.restaurant))
+        .where(Order.id == order_id)
+    )
+    order = result.unique().scalar_one_or_none()
+    if not order or not order.review_rating:
+        return
+
+    admin_html = _format_admin_order_review(order)
+    group_chat_id = getattr(order.restaurant, "telegram_group_chat_id", None)
+    if group_chat_id is not None:
+        sent_mid = await telegram_bot_client.send_message(admin_token, int(group_chat_id), admin_html)
+        if sent_mid is not None:
+            return
+        logger.warning(
+            "Failed to send review for order %s to restaurant group chat_id=%s; fallback to staff DMs",
+            order.id,
+            group_chat_id,
+        )
+
+    staff_result = await db.execute(
+        select(Staff)
+        .options(joinedload(Staff.user))
+        .where(Staff.restaurant_id == order.restaurant_id)
+    )
+    staff_list = staff_result.unique().scalars().all()
+    seen_user_ids: set[int] = set()
+    for staff in staff_list:
+        uid = int(staff.user_id)
+        if uid in seen_user_ids:
+            continue
+        seen_user_ids.add(uid)
+        await telegram_bot_client.send_message(admin_token, staff.user.id, admin_html)
+
+
+async def notify_order_review_detached(order_id: int) -> None:
+    async with async_session() as db:
+        try:
+            await notify_order_review(db, order_id)
+        except Exception:
+            logger.exception("Failed to send order review notifications for order_id=%s", order_id)

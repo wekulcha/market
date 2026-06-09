@@ -14,13 +14,9 @@ import {
   formatLocationParts,
   parseLocationParts,
 } from '../../utils/locationFormat';
+import { displayPhone, isRussianPhone, normalizePhoneInput, phoneToInputValue } from '../../utils/phoneFormat';
 
 const ACTIVE_STATUSES = new Set<OrderStatus>(['CREATED', 'ACCEPTED', 'COOKING', 'DELIVERY']);
-
-function displayPhone(phone: string | null): string {
-  if (!phone || phone.startsWith('tg-')) return '—';
-  return phone;
-}
 
 export function ProfilePage() {
   const navigate = useNavigate();
@@ -30,6 +26,8 @@ export function ProfilePage() {
   const [entrance, setEntrance] = useState('');
   const [floor, setFloor] = useState('');
   const [apartment, setApartment] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [editingPhone, setEditingPhone] = useState(false);
   const [editingAddress, setEditingAddress] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [saveProfileMsg, setSaveProfileMsg] = useState<string | null>(null);
@@ -97,9 +95,17 @@ export function ProfilePage() {
     setApartment(p.apartment);
   }, [user?.address]);
 
+  useEffect(() => {
+    setPhoneInput(phoneToInputValue(user?.phone ?? null));
+  }, [user?.phone]);
+
   const activeOrders = useMemo(
     () => orders.filter((order) => ACTIVE_STATUSES.has(order.status)),
     [orders]
+  );
+  const phoneForOrderHint = editingPhone ? phoneInput : user?.phone;
+  const needsRussianPhoneForOrder = Boolean(
+    normalizePhoneInput(phoneForOrderHint) && !isRussianPhone(phoneForOrderHint)
   );
 
   const saveAddress = async () => {
@@ -116,6 +122,29 @@ export function ProfilePage() {
       void reloadAuth();
     } catch {
       setSaveProfileMsg('Не удалось сохранить.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const savePhone = async () => {
+    if (!user?.id) return;
+    const normalized = normalizePhoneInput(phoneInput);
+    if (!normalized) {
+      setSaveProfileMsg('Введите корректный телефон: от 6 до 15 цифр.');
+      return;
+    }
+
+    setSavingProfile(true);
+    setSaveProfileMsg(null);
+    try {
+      const next = await updateUserProfile(user.id, { phone: normalized });
+      setUser(next);
+      setSaveProfileMsg('Телефон сохранён.');
+      setEditingPhone(false);
+      void reloadAuth();
+    } catch {
+      setSaveProfileMsg('Не удалось сохранить телефон.');
     } finally {
       setSavingProfile(false);
     }
@@ -169,9 +198,64 @@ export function ProfilePage() {
                   <span className="text-slate-500">Username</span>
                   <span className="text-slate-800 text-right">{user.username || '—'}</span>
                 </div>
-                <div className="flex justify-between gap-2">
-                  <span className="text-slate-500">Телефон</span>
-                  <span className="text-slate-800 text-right">{displayPhone(user.phone)}</span>
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <label className="text-xs text-slate-500 pt-0.5">
+                      Телефон
+                    </label>
+                    <div className="flex shrink-0">
+                      {!editingPhone ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSaveProfileMsg(null);
+                            setEditingPhone(true);
+                          }}
+                          className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 transition-colors"
+                          aria-label="Редактировать телефон"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                            />
+                          </svg>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={savingProfile}
+                          onClick={() => void savePhone()}
+                          className="p-2 rounded-xl text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                          aria-label="Сохранить телефон"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    className="w-full rounded-xl border border-slate-200 px-2 py-2 text-sm read-only:bg-slate-50 read-only:text-slate-600"
+                    value={editingPhone ? phoneInput : displayPhone(user.phone)}
+                    readOnly={!editingPhone}
+                    placeholder="+7 900 123-45-67"
+                    onChange={(e) => {
+                      setPhoneInput(e.target.value.slice(0, 24));
+                      setSaveProfileMsg(null);
+                    }}
+                  />
+                  {needsRussianPhoneForOrder && (
+                    <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      Для заказа нужно указать и сохранить российский номер телефона.
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-start justify-between gap-2">
@@ -323,4 +407,3 @@ function ProfileAddressInput({
     </div>
   );
 }
-
