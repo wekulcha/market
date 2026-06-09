@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fetchMarketRestaurant } from '../../api/restaurants';
 import { fetchMealsByRestaurant } from '../../api/meals';
+import { logUserActivity } from '../../api/activity';
 import { MenuItemCard } from '../../components/menu/MenuItemCard';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -23,7 +24,7 @@ export function MenuPage() {
   const { categoryKey } = useParams<{ categoryKey?: string }>();
   const navigate = useNavigate();
   const { selectedRestaurant, setSelectedRestaurant, setServiceType } = useAppContext();
-  const { currentUser } = useAuth();
+  const { authReady, currentUser } = useAuth();
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +58,11 @@ export function MenuPage() {
     void loadProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRestaurant?.id]);
+
+  useEffect(() => {
+    if (!authReady || !currentUser) return;
+    logUserActivity('category_open', { category: selectedCategory ?? 'all' });
+  }, [authReady, currentUser, selectedCategory]);
 
   const normalizedSearch = searchQuery.toLowerCase().trim();
   const mealsAfterSearch = useMemo(() => {

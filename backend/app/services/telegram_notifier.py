@@ -235,6 +235,63 @@ def _format_admin_order_review(order: Order) -> str:
     return "\n".join(parts)
 
 
+def _review_admin_messages(order: Order) -> list[dict[str, int]]:
+    raw_messages = order.review_admin_messages
+    if not isinstance(raw_messages, list):
+        return []
+
+    messages: list[dict[str, int]] = []
+    for raw in raw_messages:
+        if not isinstance(raw, dict):
+            continue
+        try:
+            chat_id = int(raw.get("chat_id") or 0)
+            message_id = int(raw.get("message_id") or 0)
+        except (TypeError, ValueError):
+            continue
+        if chat_id and message_id > 0:
+            messages.append({"chat_id": chat_id, "message_id": message_id})
+    return messages
+
+
+async def _set_review_admin_messages(
+    db: AsyncSession, order: Order, messages: list[dict[str, int]]
+) -> None:
+    order.review_admin_messages = messages or None
+    await db.flush()
+
+
+async def _edit_order_review_admin_messages(
+    db: AsyncSession, admin_token: str, order: Order, admin_html: str
+) -> bool:
+    messages = _review_admin_messages(order)
+    if not messages:
+        return False
+
+    edited_messages: list[dict[str, int]] = []
+    for item in messages:
+        ok = await telegram_bot_client.edit_message_text(
+            admin_token,
+            item["chat_id"],
+            item["message_id"],
+            admin_html,
+        )
+        if ok:
+            edited_messages.append(item)
+        else:
+            logger.warning(
+                "Failed to edit review notification for order %s chat_id=%s message_id=%s",
+                order.id,
+                item["chat_id"],
+                item["message_id"],
+            )
+
+    if edited_messages != messages:
+        await _set_review_admin_messages(db, order, edited_messages)
+
+    return bool(edited_messages)
+
+
 async def notify_order_placed(db: AsyncSession, order_id: int) -> None:
     settings = get_settings()
 
@@ -360,10 +417,20 @@ async def notify_order_review(db: AsyncSession, order_id: int) -> None:
         return
 
     admin_html = _format_admin_order_review(order)
+    if await _edit_order_review_admin_messages(db, admin_token, order, admin_html):
+        return
+
+    sent_messages: list[dict[str, int]] = []
     group_chat_id = getattr(order.restaurant, "telegram_group_chat_id", None)
     if group_chat_id is not None:
-        sent_mid = await telegram_bot_client.send_message(admin_token, int(group_chat_id), admin_html)
+        chat_id = int(group_chat_id)
+        sent_mid = await telegram_bot_client.send_message(admin_token, chat_id, admin_html)
         if sent_mid is not None:
+            await _set_review_admin_messages(
+                db,
+                order,
+                [{"chat_id": chat_id, "message_id": int(sent_mid)}],
+            )
             return
         logger.warning(
             "Failed to send review for order %s to restaurant group chat_id=%s; fallback to staff DMs",
@@ -383,12 +450,20 @@ async def notify_order_review(db: AsyncSession, order_id: int) -> None:
         if uid in seen_user_ids:
             continue
         seen_user_ids.add(uid)
-        await telegram_bot_client.send_message(admin_token, staff.user.id, admin_html)
+        chat_id = int(staff.user.id)
+        sent_mid = await telegram_bot_client.send_message(admin_token, chat_id, admin_html)
+        if sent_mid is not None:
+            sent_messages.append({"chat_id": chat_id, "message_id": int(sent_mid)})
+
+    if sent_messages:
+        await _set_review_admin_messages(db, order, sent_messages)
 
 
 async def notify_order_review_detached(order_id: int) -> None:
     async with async_session() as db:
         try:
             await notify_order_review(db, order_id)
+            await db.commit()
         except Exception:
+            await db.rollback()
             logger.exception("Failed to send order review notifications for order_id=%s", order_id)

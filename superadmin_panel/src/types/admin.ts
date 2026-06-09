@@ -73,3 +73,12 @@ export interface AdminStatsSummary {
   restaurants: number;
   orders: number;
 }
+
+export interface AdminUserActivityLog {
+  id: number;
+  userId: number;
+  event: string;
+  source: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}

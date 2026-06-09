@@ -31,6 +31,7 @@ from app.schemas.order import (
 )
 from app.deps.superadmin import assert_superadmin
 from app.services import staff_access
+from app.services.activity_log import log_user_activity
 from app.services.session_auth import ensure_customer, get_user_from_bearer
 from app.services.telegram_auth import verify_bot_link_token, verify_telegram_init_data
 from app.services.phone_norm import is_proper_registered_phone, is_russian_order_phone
@@ -605,6 +606,13 @@ async def checkout(
         db.add(position)
 
     await db.flush()
+    await log_user_activity(
+        db,
+        user_id=customer.id,
+        event="checkout_created",
+        source="backend",
+        metadata={"orderId": order.id, "total": str(total), "restaurantId": body.restaurantId},
+    )
     response = _to_dto(order)
     order_id = int(order.id)
     await db.commit()
@@ -726,6 +734,13 @@ async def patch_review(
         order.review_text = text
     order.review_created_at = order.review_created_at or datetime.now()
     order.updated_at = datetime.now()
+    await log_user_activity(
+        db,
+        user_id=order.user_id,
+        event="review_saved",
+        source="bot" if bot_authorized else "webapp",
+        metadata={"orderId": order.id, "rating": body.rating, "hasText": bool(text)},
+    )
 
     await db.flush()
     response = _to_dto(order)

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchMyOrders } from '../../api/orders';
 import { fetchCurrentUser, updateUserProfile } from '../../api/users';
+import { logUserActivity } from '../../api/activity';
 import { MARKET_BRAND_NAME } from '../../config/market';
 import { OrderCard } from '../../components/orders/OrderCard';
 import { useAuth } from '../../context/AuthContext';
@@ -14,7 +15,13 @@ import {
   formatLocationParts,
   parseLocationParts,
 } from '../../utils/locationFormat';
-import { displayPhone, isRussianPhone, normalizePhoneInput, phoneToInputValue } from '../../utils/phoneFormat';
+import {
+  displayPhone,
+  isRegisteredPhone,
+  isRussianPhone,
+  phoneToRussianLocal10,
+  russianLocal10ToStorage,
+} from '../../utils/phoneFormat';
 
 const ACTIVE_STATUSES = new Set<OrderStatus>(['CREATED', 'ACCEPTED', 'COOKING', 'DELIVERY']);
 
@@ -26,7 +33,7 @@ export function ProfilePage() {
   const [entrance, setEntrance] = useState('');
   const [floor, setFloor] = useState('');
   const [apartment, setApartment] = useState('');
-  const [phoneInput, setPhoneInput] = useState('');
+  const [phoneLocal10, setPhoneLocal10] = useState('');
   const [editingPhone, setEditingPhone] = useState(false);
   const [editingAddress, setEditingAddress] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -96,16 +103,20 @@ export function ProfilePage() {
   }, [user?.address]);
 
   useEffect(() => {
-    setPhoneInput(phoneToInputValue(user?.phone ?? null));
+    setPhoneLocal10(phoneToRussianLocal10(user?.phone ?? null));
   }, [user?.phone]);
+
+  useEffect(() => {
+    if (!authReady || !currentUser) return;
+    logUserActivity('profile_open');
+  }, [authReady, currentUser]);
 
   const activeOrders = useMemo(
     () => orders.filter((order) => ACTIVE_STATUSES.has(order.status)),
     [orders]
   );
-  const phoneForOrderHint = editingPhone ? phoneInput : user?.phone;
   const needsRussianPhoneForOrder = Boolean(
-    normalizePhoneInput(phoneForOrderHint) && !isRussianPhone(phoneForOrderHint)
+    user && isRegisteredPhone(user.phone) && !isRussianPhone(user.phone) && phoneLocal10.length !== 10
   );
 
   const saveAddress = async () => {
@@ -129,9 +140,9 @@ export function ProfilePage() {
 
   const savePhone = async () => {
     if (!user?.id) return;
-    const normalized = normalizePhoneInput(phoneInput);
+    const normalized = russianLocal10ToStorage(phoneLocal10);
     if (!normalized) {
-      setSaveProfileMsg('Введите корректный телефон: от 6 до 15 цифр.');
+      setSaveProfileMsg('Введите 10 цифр российского номера после +7.');
       return;
     }
 
@@ -238,19 +249,31 @@ export function ProfilePage() {
                       )}
                     </div>
                   </div>
-                  <input
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    className="w-full rounded-xl border border-slate-200 px-2 py-2 text-sm read-only:bg-slate-50 read-only:text-slate-600"
-                    value={editingPhone ? phoneInput : displayPhone(user.phone)}
-                    readOnly={!editingPhone}
-                    placeholder="+7 900 123-45-67"
-                    onChange={(e) => {
-                      setPhoneInput(e.target.value.slice(0, 24));
-                      setSaveProfileMsg(null);
-                    }}
-                  />
+                  {editingPhone ? (
+                    <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white">
+                      <span className="px-3 py-2 text-sm bg-slate-100 text-slate-600 border-r border-slate-200 select-none">
+                        +7
+                      </span>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel-national"
+                        className="flex-1 min-w-0 px-3 py-2 text-sm outline-none"
+                        placeholder="9001234567"
+                        value={phoneLocal10}
+                        onChange={(e) => {
+                          setPhoneLocal10(e.target.value.replace(/\D/g, '').slice(0, 10));
+                          setSaveProfileMsg(null);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <input
+                      className="w-full rounded-xl border border-slate-200 px-2 py-2 text-sm bg-slate-50 text-slate-600"
+                      value={displayPhone(user.phone)}
+                      readOnly
+                    />
+                  )}
                   {needsRussianPhoneForOrder && (
                     <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                       Для заказа нужно указать и сохранить российский номер телефона.

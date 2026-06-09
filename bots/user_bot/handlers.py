@@ -66,6 +66,17 @@ async def _save_order_review(order_id: int, rating: int, text: str | None = None
     return 200 <= response.status_code < 300
 
 
+async def _log_bot_activity(user_id: int, event: str, metadata: dict | None = None) -> None:
+    if not BOT_API_SECRET:
+        return
+    async with httpx.AsyncClient(timeout=8.0) as client:
+        await client.post(
+            f"{API_BASE}/activity",
+            headers={**_bot_headers(), "Content-Type": "application/json"},
+            json={"userId": user_id, "event": event, "source": "bot", "metadata": metadata or {}},
+        )
+
+
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     user_id = message.from_user.id
@@ -306,6 +317,14 @@ async def profile_fallback(message: Message):
 async def unknown_text(message: Message):
     if (message.text or "").startswith("/"):
         return
+    try:
+        await _log_bot_activity(
+            message.from_user.id,
+            "bot_unknown_text",
+            {"text": (message.text or "")[:300]},
+        )
+    except Exception:
+        pass
     await message.answer(
         "Я пока не понимаю такие сообщения.\n"
         "По всем вопросам и предложениям напишите админам: "

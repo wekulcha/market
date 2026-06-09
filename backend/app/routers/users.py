@@ -15,6 +15,7 @@ from app.models.staff import Staff
 from app.models.user import User
 from app.schemas.user import UserDto, UserRestaurantDto
 from app.services.phone_norm import normalize_phone_to_storage
+from app.services.activity_log import log_user_activity
 from app.services.session_auth import ensure_customer, get_user_from_bearer
 from app.services.telegram_auth import verify_bot_link_token, verify_telegram_init_data
 
@@ -200,6 +201,13 @@ async def create_user(
         if dto.address is not None:
             existing.address = dto.address
         await db.flush()
+        await log_user_activity(
+            db,
+            user_id=existing.id,
+            event="bot_contact_saved" if normalized_phone else "user_profile_updated",
+            source="bot" if normalized_phone else "backend",
+            metadata={"phoneUpdated": bool(normalized_phone), "addressUpdated": dto.address is not None},
+        )
         return _to_dto(existing)
 
     if normalized_phone:
@@ -222,6 +230,13 @@ async def create_user(
     )
     db.add(user)
     await db.flush()
+    await log_user_activity(
+        db,
+        user_id=user.id,
+        event="user_created",
+        source="bot" if normalized_phone else "backend",
+        metadata={"phoneUpdated": bool(normalized_phone), "addressUpdated": dto.address is not None},
+    )
     return _to_dto(user)
 
 
@@ -252,6 +267,13 @@ async def update_user(
     if dto.registeredAt is not None:
         user.registered_at = dto.registeredAt
     await db.flush()
+    await log_user_activity(
+        db,
+        user_id=user.id,
+        event="user_profile_updated",
+        source="webapp",
+        metadata={"phoneUpdated": dto.phone is not None, "addressUpdated": dto.address is not None},
+    )
     return _to_dto(user)
 
 

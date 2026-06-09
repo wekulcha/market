@@ -8,6 +8,7 @@ from app.models.staff import Staff
 from app.models.subscription_log import SubscriptionLog
 from app.models.support_ticket import SupportTicket
 from app.models.user import User
+from app.models.user_activity_log import UserActivityLog
 
 __all__ = [
     "Courier",
@@ -20,4 +21,5 @@ __all__ = [
     "SubscriptionLog",
     "SupportTicket",
     "User",
+    "UserActivityLog",
 ]

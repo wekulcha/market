@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MiniAppShell } from '../../layout/MiniAppShell';
 import { Header } from '../../layout/Header';
@@ -5,12 +6,15 @@ import { useCart } from '../../context/CartContext';
 import { CartItemRow } from '../../components/cart/CartItemRow';
 import { MARKET_MIN_ORDER_TOTAL } from '../../config/market';
 import { useAppContext } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
+import { logUserActivity } from '../../api/activity';
 import { deliveryCutoffHint, deliveryPromiseText } from '../../utils/deliveryPromise';
 
 export function CartPage() {
   const navigate = useNavigate();
   const { items } = useCart();
   const { selectedRestaurant } = useAppContext();
+  const { authReady, currentUser } = useAuth();
 
   const itemsTotal = items.reduce(
     (sum, item) => sum + item.meal.price * item.quantity,
@@ -18,6 +22,12 @@ export function CartPage() {
   );
   const missingToMinimum = Math.max(0, MARKET_MIN_ORDER_TOTAL - itemsTotal);
   const canCheckout = items.length > 0 && missingToMinimum === 0;
+
+  useEffect(() => {
+    if (!authReady || !currentUser) return;
+    logUserActivity('cart_open', { itemsCount: items.length, itemsTotal });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authReady, currentUser?.id]);
 
   return (
     <MiniAppShell>

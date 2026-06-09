@@ -19,9 +19,22 @@ export function normalizePhoneInput(phone: string | null | undefined): string | 
 }
 
 export function normalizeRussianPhoneInput(phone: string | null | undefined): string | null {
-  const normalized = normalizePhoneInput(phone);
-  if (!normalized) return null;
-  return normalized.length === 11 && normalized.startsWith('7') ? normalized : null;
+  if (!phone || !phone.trim() || isPlaceholderPhone(phone)) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 10) return `7${digits}`;
+  if (digits.length === 11 && digits.startsWith('7')) return digits;
+  if (digits.length === 11 && digits.startsWith('8')) return `7${digits.slice(1)}`;
+  return null;
+}
+
+export function phoneToRussianLocal10(phone: string | null | undefined): string {
+  const normalized = normalizeRussianPhoneInput(phone);
+  return normalized ? normalized.slice(1) : '';
+}
+
+export function russianLocal10ToStorage(local10: string): string | null {
+  const digits = local10.replace(/\D/g, '').slice(0, 10);
+  return digits.length === 10 ? `7${digits}` : null;
 }
 
 export function isRegisteredPhone(phone: string | null | undefined): boolean {

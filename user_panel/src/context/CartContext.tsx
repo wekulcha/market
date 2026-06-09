@@ -9,6 +9,7 @@ import {
 import type { Meal } from '../types/meal';
 import type { CartItem } from '../types/cart';
 import { useAppContext } from './AppContext';
+import { logUserActivity } from '../api/activity';
 
 const STORAGE_KEY = 'kulcha_market_cart_v1';
 
@@ -72,6 +73,7 @@ export const CartContextProvider: React.FC<{ children: ReactNode }> = ({ childre
   );
 
   const addItem = useCallback((meal: Meal) => {
+    logUserActivity('cart_add_item', { mealId: meal.id, category: meal.category });
     setItems((prev) => {
       const existing = prev.find((it) => it.meal.id === meal.id);
       if (!existing) {
@@ -84,6 +86,7 @@ export const CartContextProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, []);
 
   const increment = useCallback((mealId: number) => {
+    logUserActivity('cart_increment_item', { mealId });
     setItems((prev) =>
       prev.map((it) =>
         it.meal.id === mealId ? { ...it, quantity: it.quantity + 1 } : it
@@ -92,6 +95,7 @@ export const CartContextProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, []);
 
   const decrement = useCallback((mealId: number) => {
+    logUserActivity('cart_decrement_item', { mealId });
     setItems((prev) =>
       prev
         .map((it) =>
@@ -101,7 +105,10 @@ export const CartContextProvider: React.FC<{ children: ReactNode }> = ({ childre
     );
   }, []);
 
-  const clearCart = useCallback(() => setItems([]), []);
+  const clearCart = useCallback(() => {
+    logUserActivity('cart_clear');
+    setItems([]);
+  }, []);
 
   const totalItems = items.reduce((sum, it) => sum + it.quantity, 0);
 

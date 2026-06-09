@@ -16,6 +16,8 @@ from app.models.restaurant import Restaurant
 from app.models.subscription_log import SubscriptionLog
 from app.models.staff import Staff
 from app.models.user import User
+from app.models.user_activity_log import UserActivityLog
+from app.schemas.activity import ActivityLogDto
 from app.schemas.admin import (
     AdminAssignCourierRequestDto,
     AdminAssignStaffRequestDto,
@@ -62,6 +64,17 @@ def _staff_dto(s: Staff) -> StaffDto:
     return StaffDto(
         id=s.id, userId=s.user_id,
         restaurantId=s.restaurant_id, permission=s.permission.value,
+    )
+
+
+def _activity_log_dto(log: UserActivityLog) -> ActivityLogDto:
+    return ActivityLogDto(
+        id=log.id,
+        userId=log.user_id,
+        event=log.event,
+        source=log.source,
+        metadata=log.metadata_json,
+        createdAt=log.created_at,
     )
 
 
@@ -224,6 +237,27 @@ async def get_user_restaurants(
         ))
     restaurants.sort(key=lambda r: r.name)
     return restaurants
+
+
+@router.get("/users/{user_id}/activity", response_model=list[ActivityLogDto])
+async def get_user_activity_logs(
+    user_id: int,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+    _caller: User = Depends(require_superadmin),
+):
+    result = await db.execute(select(User).where(User.id == user_id))
+    if not result.scalars().first():
+        raise HTTPException(404, "User not found")
+
+    safe_limit = min(max(limit, 1), 300)
+    logs_result = await db.execute(
+        select(UserActivityLog)
+        .where(UserActivityLog.user_id == user_id)
+        .order_by(UserActivityLog.created_at.desc(), UserActivityLog.id.desc())
+        .limit(safe_limit)
+    )
+    return [_activity_log_dto(log) for log in logs_result.scalars().all()]
 
 
 @router.post("/restaurants", status_code=201)

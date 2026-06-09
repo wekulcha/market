@@ -15,6 +15,7 @@ from app.models.user import User
 from app.schemas.admin import AdminWebAppSessionDto
 from app.schemas.auth import AuthSessionDto, AuthUserDto, BotTokenRequest, TelegramLoginRequest
 from app.schemas.user import UserDto, UserRestaurantDto
+from app.services.activity_log import log_user_activity
 from app.services.session_auth import (
     REFRESH_COOKIE_NAME,
     clear_refresh_cookie,
@@ -171,6 +172,7 @@ async def login_telegram_user(
         raise HTTPException(401, "No user id in init data")
 
     user = await ensure_customer(db, int(tid), tg_user.get("username"))
+    await log_user_activity(db, user_id=user.id, event="auth_login", source="webapp")
     return await _issue_auth_session(db, response, user)
 
 

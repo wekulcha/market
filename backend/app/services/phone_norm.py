@@ -6,7 +6,7 @@ def normalize_phone_to_storage(phone: str) -> str | None:
     if not phone or not str(phone).strip():
         return None
     digits = "".join(c for c in str(phone) if c.isdigit())
-    if len(digits) == 10 and digits[0] == "9":
+    if len(digits) == 10:
         return "7" + digits
     if len(digits) == 11 and digits[0] == "7":
         return digits

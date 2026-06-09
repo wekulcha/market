@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Numeric, String, TypeDecorator
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, JSON, Numeric, String, TypeDecorator
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -69,6 +69,9 @@ class Order(Base):
     review_rating: Mapped[int | None] = mapped_column(nullable=True)
     review_text: Mapped[str | None] = mapped_column(String, nullable=True)
     review_created_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    review_admin_messages: Mapped[list[dict[str, int]] | None] = mapped_column(
+        JSON, nullable=True
+    )
 
     user = relationship("User", lazy="joined")
     restaurant = relationship("Restaurant", lazy="joined")

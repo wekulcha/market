@@ -4,6 +4,7 @@ import { fetchMarketRestaurant } from '../../api/restaurants';
 import { createOrder } from '../../api/orders';
 import { ApiError } from '../../api/client';
 import { updateUserProfile } from '../../api/users';
+import { logUserActivity } from '../../api/activity';
 import { MARKET_BRAND_NAME, MARKET_MIN_ORDER_TOTAL } from '../../config/market';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
@@ -22,9 +23,8 @@ import { deliveryCutoffHint, deliveryPromiseText } from '../../utils/deliveryPro
 import {
   isRegisteredPhone,
   isRussianPhone,
-  normalizePhoneInput,
-  normalizeRussianPhoneInput,
-  phoneToInputValue,
+  phoneToRussianLocal10,
+  russianLocal10ToStorage,
 } from '../../utils/phoneFormat';
 
 function sanitizeUsername(username: string | null): string {
@@ -53,7 +53,7 @@ export function CheckoutPage() {
   const [apartment, setApartment] = useState('');
   const [comment, setComment] = useState('');
   const [username, setUsername] = useState<string>('');
-  const [phoneInput, setPhoneInput] = useState('');
+  const [phoneLocal10, setPhoneLocal10] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [marketLoading, setMarketLoading] = useState(false);
   const [marketError, setMarketError] = useState<string | null>(null);
@@ -87,7 +87,7 @@ export function CheckoutPage() {
 
   useEffect(() => {
     if (!currentUser) return;
-    setPhoneInput((prev) => (prev.trim() ? prev : phoneToInputValue(currentUser.phone)));
+    setPhoneLocal10((prev) => (prev.trim() ? prev : phoneToRussianLocal10(currentUser.phone)));
     setUsername(sanitizeUsername(currentUser.username));
   }, [currentUser]);
 
@@ -101,27 +101,40 @@ export function CheckoutPage() {
     setApartment((prev) => (prev.trim() ? prev : p.apartment));
   }, [currentUser?.address]);
 
+  useEffect(() => {
+    if (!authReady || !currentUser) return;
+    logUserActivity('checkout_open', { itemsCount: items.length, itemsTotal });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authReady, currentUser?.id]);
+
+  const showCheckoutError = (message: string, reason: string) => {
+    setErrorMessage(message);
+    if (currentUser) {
+      logUserActivity('checkout_failed', { reason, itemsCount: items.length, itemsTotal });
+    }
+  };
+
   const handleSubmit = async () => {
     setErrorMessage(null);
     setSuccessMessage(null);
 
     if (items.length === 0) {
-      setErrorMessage('Корзина пуста, добавьте товары перед оформлением.');
+      showCheckoutError('Корзина пуста, добавьте товары перед оформлением.', 'empty_cart');
       return;
     }
 
     if (itemsTotal < MARKET_MIN_ORDER_TOTAL) {
-      setErrorMessage(`Минимальная сумма заказа — ${MARKET_MIN_ORDER_TOTAL} ₽. Добавьте товаров ещё на ${missingToMinimum.toFixed(0)} ₽.`);
+      showCheckoutError(`Минимальная сумма заказа — ${MARKET_MIN_ORDER_TOTAL} ₽. Добавьте товаров ещё на ${missingToMinimum.toFixed(0)} ₽.`, 'min_total');
       return;
     }
 
     if (!selectedRestaurant) {
-      setErrorMessage('Магазин не настроен. Попробуйте обновить страницу.');
+      showCheckoutError('Магазин не настроен. Попробуйте обновить страницу.', 'missing_restaurant');
       return;
     }
 
     if (!authReady) {
-      setErrorMessage('Подождите немного, мы еще проверяем вход в mini app.');
+      showCheckoutError('Подождите немного, мы еще проверяем вход в mini app.', 'auth_not_ready');
       return;
     }
 
@@ -131,18 +144,18 @@ export function CheckoutPage() {
     }
 
     if (!isRegisteredPhone(currentUser.phone)) {
-      setErrorMessage('Чтобы оформить заказ, сначала поделитесь контактом через Telegram.');
+      showCheckoutError('Чтобы оформить заказ, сначала поделитесь контактом через Telegram.', 'needs_registration');
       return;
     }
 
-    const phoneForApi = normalizeRussianPhoneInput(phoneInput);
+    const phoneForApi = russianLocal10ToStorage(phoneLocal10);
     if (!phoneForApi) {
-      setErrorMessage('Для заказа нужен российский номер. Укажите номер формата +7 900 123-45-67.');
+      showCheckoutError('Введите 10 цифр российского номера после +7.', 'invalid_order_phone');
       return;
     }
 
     if (!street.trim() || !house.trim() || !entrance.trim() || !floor.trim() || !apartment.trim()) {
-      setErrorMessage('Укажите улицу, дом, подъезд, этаж и квартиру.');
+      showCheckoutError('Укажите улицу, дом, подъезд, этаж и квартиру.', 'incomplete_address');
       return;
     }
 
@@ -181,9 +194,9 @@ export function CheckoutPage() {
     } catch (error) {
       console.error(error);
       if (error instanceof ApiError && error.body.trim()) {
-        setErrorMessage(error.body.trim());
+        showCheckoutError(error.body.trim(), `api_${error.status}`);
       } else {
-        setErrorMessage('Не удалось оформить заказ. Попробуйте позже.');
+        showCheckoutError('Не удалось оформить заказ. Попробуйте позже.', 'network_or_unknown');
       }
     } finally {
       setSubmitting(false);
@@ -222,11 +235,11 @@ export function CheckoutPage() {
     }
   };
 
-  const normalizedPhone = normalizePhoneInput(phoneInput);
-  const phoneForApi = normalizeRussianPhoneInput(phoneInput);
+  const phoneForApi = russianLocal10ToStorage(phoneLocal10);
   const phoneDigitsOk = phoneForApi !== null;
   const needsRegistration = Boolean(authReady && currentUser && !isRegisteredPhone(currentUser.phone));
-  const needsRussianPhone = Boolean(!needsRegistration && normalizedPhone && !isRussianPhone(phoneInput));
+  const hasForeignSavedPhone = Boolean(authReady && currentUser && isRegisteredPhone(currentUser.phone) && !isRussianPhone(currentUser.phone));
+  const needsRussianPhone = Boolean(!needsRegistration && hasForeignSavedPhone && !phoneDigitsOk);
   const savedDeliveryAddress = formatLocationShort(currentUser?.address ?? null);
   const actionDisabled =
     submitting ||
@@ -344,15 +357,20 @@ export function CheckoutPage() {
             </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1">Телефон</label>
-              <input
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white"
-                placeholder="+7 900 123-45-67"
-                value={phoneInput}
-                onChange={(e) => setPhoneInput(e.target.value.slice(0, 24))}
-              />
+              <div className="flex rounded-xl border border-slate-200 overflow-hidden bg-white">
+                <span className="px-3 py-2 text-sm bg-slate-100 text-slate-600 border-r border-slate-200 select-none">
+                  +7
+                </span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  className="flex-1 min-w-0 px-3 py-2 text-sm outline-none"
+                  placeholder="9001234567"
+                  value={phoneLocal10}
+                  onChange={(e) => setPhoneLocal10(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                />
+              </div>
             </div>
           </div>
           <p className="text-[11px] text-slate-400">

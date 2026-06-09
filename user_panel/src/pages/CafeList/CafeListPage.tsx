@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MARKET_BRAND_NAME, MARKET_MIN_ORDER_TOTAL } from '../../config/market';
 import { useAppContext } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
+import { logUserActivity } from '../../api/activity';
 import { fetchMarketRestaurant } from '../../api/restaurants';
 import { fetchMealsByRestaurant } from '../../api/meals';
 import { Header } from '../../layout/Header';
@@ -13,6 +15,7 @@ import { deliveryPromiseText } from '../../utils/deliveryPromise';
 export function CafeListPage() {
   const navigate = useNavigate();
   const { setSelectedRestaurant, setServiceType } = useAppContext();
+  const { authReady, currentUser } = useAuth();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -40,6 +43,11 @@ export function CafeListPage() {
       setSelectedRestaurant(marketRestaurant);
     }
   }, [marketRestaurant, setSelectedRestaurant]);
+
+  useEffect(() => {
+    if (!authReady || !currentUser) return;
+    logUserActivity('catalog_open');
+  }, [authReady, currentUser]);
 
   const normalizedSearch = searchQuery.toLowerCase().trim();
   const categoriesWithProducts = useMemo(() => {

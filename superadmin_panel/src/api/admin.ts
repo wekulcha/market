@@ -3,6 +3,7 @@ import type {
   AdminOrderSummary,
   AdminRestaurantOverview,
   AdminStatsSummary,
+  AdminUserActivityLog,
   AdminUserOverview,
   CreateRestaurantRequest,
 } from "../types/admin";
@@ -41,6 +42,17 @@ export async function fetchAdminOrderDetail(orderId: number): Promise<AdminOrder
 
 export async function fetchAdminStats(): Promise<AdminStatsSummary> {
   return apiFetchJson<AdminStatsSummary>("/admin/stats/summary", {}, { auth: true });
+}
+
+export async function fetchAdminUserActivity(
+  userId: number,
+  limit = 100
+): Promise<AdminUserActivityLog[]> {
+  return apiFetchJson<AdminUserActivityLog[]>(
+    `/admin/users/${userId}/activity?limit=${limit}`,
+    {},
+    { auth: true }
+  );
 }
 
 export async function setUserActive(userId: number, isActive: boolean): Promise<void> {

@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.routers import (
     admin,
+    activity,
     auth,
     courier_panel,
     couriers,
@@ -92,6 +93,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 
 app.include_router(auth.router)
+app.include_router(activity.router)
 app.include_router(users.router)
 app.include_router(restaurants.router)
 app.include_router(meals.router)
