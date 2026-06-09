@@ -11,7 +11,7 @@ import { MiniAppShell } from '../../layout/MiniAppShell';
 import type { Meal } from '../../types/meal';
 import { formatLocationShort } from '../../utils/locationFormat';
 import {
-  PRODUCT_CATEGORY_KEYS,
+  PRODUCT_CATEGORIES,
   findProductCategory,
   productCategoryLabel,
   productCategoryRank,
@@ -75,7 +75,10 @@ export function MenuPage() {
     return mealsAfterSearch.filter((meal) => meal.category === selectedCategory);
   }, [mealsAfterSearch, selectedCategory]);
 
-  const categories = PRODUCT_CATEGORY_KEYS;
+  const categories = useMemo(() => {
+    const keys = new Set(meals.filter((meal) => meal.is_available).map((meal) => meal.category).filter(Boolean));
+    return PRODUCT_CATEGORIES.filter((category) => keys.has(category.key)).map((category) => category.key);
+  }, [meals]);
 
   const groupedMeals = useMemo(() => {
     const grouped: Record<string, Meal[]> = {};
@@ -144,7 +147,7 @@ export function MenuPage() {
           <div className="mt-0.5 text-[11px] text-slate-500">{deliveryHint}</div>
         </div>
 
-        {!loading && !error && (
+        {!loading && !error && categories.length > 0 && (
           <div className="sticky top-14 z-20 -mx-4 px-4 py-2 bg-neutral-50/95 backdrop-blur-sm border-b border-slate-200">
             <div className="flex gap-2 overflow-x-auto scrollbar-hide">
               {categories.map((cat) => {
