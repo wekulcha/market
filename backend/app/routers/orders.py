@@ -5,7 +5,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -260,7 +260,18 @@ async def get_all(
                 raise HTTPException(400, f"Invalid status: {status}") from exc
         if todayOnly:
             start, end = msk_today_utc_naive_bounds()
-            stmt = stmt.where(Order.created_at >= start, Order.created_at < end)
+            active_statuses = [
+                OrderStatus.CREATED,
+                OrderStatus.ACCEPTED,
+                OrderStatus.COOKING,
+                OrderStatus.DELIVERY,
+            ]
+            stmt = stmt.where(
+                or_(
+                    and_(Order.created_at >= start, Order.created_at < end),
+                    Order.status.in_(active_statuses),
+                ),
+            )
         stmt = stmt.order_by(Order.created_at.desc())
         result = await db.execute(stmt)
         return [_to_dto(order) for order in result.unique().scalars().all()]
