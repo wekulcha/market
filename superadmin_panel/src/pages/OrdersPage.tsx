@@ -157,7 +157,13 @@ function OrderDetailBody({ d }: { d: AdminOrderDetail }) {
             <li key={i} className="flex justify-between gap-2">
               <span className="text-slate-800">
                 {p.mealName} ×{p.quantity}
-                {p.finalWeightGrams ? ` (${p.finalWeightGrams / 1000} кг)` : p.mealWeight ? ` (${p.mealWeight} г)` : ""}
+                {p.finalWeightGramsList?.length
+                  ? ` (${p.finalWeightGramsList.reduce((sum, grams) => sum + grams, 0) / 1000} кг)`
+                  : p.finalWeightGrams
+                    ? ` (${p.finalWeightGrams / 1000} кг)`
+                    : p.mealWeight
+                      ? ` (${p.mealWeight} г)`
+                      : ""}
               </span>
               <span className="text-slate-600 shrink-0">{formatMoney(p.totalPrice)}</span>
             </li>

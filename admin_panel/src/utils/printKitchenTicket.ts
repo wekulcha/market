@@ -48,8 +48,11 @@ function formatPrintedDate(iso: string): string {
 }
 
 function formatItemQuantity(item: AdminOrderItem): string {
-  if (item.final_weight_grams) {
-    return `×${item.quantity} (${item.final_weight_grams / 1000} кг)`;
+  const finalWeight = item.final_weight_grams_list.length > 0
+    ? item.final_weight_grams_list.reduce((sum, grams) => sum + grams, 0)
+    : item.final_weight_grams;
+  if (finalWeight) {
+    return `×${item.quantity} (${finalWeight / 1000} кг)`;
   }
   return `×${item.quantity}${item.weight ? ` (${item.weight} г)` : ""}`;
 }

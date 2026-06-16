@@ -16,7 +16,17 @@ class OrderPositionDto(BaseModel):
     unitPrice: Decimal | None = None
     totalPrice: Decimal | None = None
     finalWeightGrams: int | None = None
+    finalWeightGramsList: list[int] | None = None
 
 
 class OrderPositionFinalWeightPatchDto(BaseModel):
     finalWeightGrams: int | None = None
+
+
+class OrderPositionFinalWeightItemDto(BaseModel):
+    positionId: int
+    finalWeightGramsList: list[int]
+
+
+class OrderFinalWeightsPatchDto(BaseModel):
+    positions: list[OrderPositionFinalWeightItemDto]

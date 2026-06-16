@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.config import get_settings
 from app.database import async_session
@@ -52,11 +52,29 @@ def _order_type_ru(ot: object) -> str:
     return _ORDER_TYPE_RU.get(_enum_key(ot), _enum_key(ot))
 
 
+def _final_weight_grams(p: OrderPosition) -> int | None:
+    unit_weights = getattr(p, "unit_weights", None) or []
+    if unit_weights:
+        return sum(w.weight_grams for w in unit_weights)
+    return p.final_weight_grams
+
+
+def _format_kg(grams: int) -> str:
+    return f"{(Decimal(grams) / Decimal('1000')).normalize()} кг"
+
+
 def _position_name_qty(p: OrderPosition, *, include_weight: bool) -> str:
-    final_weight = p.final_weight_grams
+    unit_weights = sorted(
+        getattr(p, "unit_weights", None) or [],
+        key=lambda w: w.unit_index,
+    )
+    final_weight = sum(w.weight_grams for w in unit_weights) if unit_weights else p.final_weight_grams
     catalog_weight = p.meal.weight if p.meal else None
-    if include_weight and final_weight:
-        weight_text = f"{(Decimal(final_weight) / Decimal('1000')).normalize()} кг"
+    if include_weight and unit_weights:
+        weight_text = " + ".join(_format_kg(w.weight_grams) for w in unit_weights)
+        suffix = f" ({weight_text})"
+    elif include_weight and final_weight:
+        weight_text = _format_kg(final_weight)
         suffix = f" ({weight_text})"
     elif include_weight and catalog_weight:
         suffix = f" ({catalog_weight} г)"
@@ -67,7 +85,7 @@ def _position_name_qty(p: OrderPosition, *, include_weight: bool) -> str:
 
 
 def _position_user_price_text(p: OrderPosition) -> str:
-    if p.meal and p.meal.requires_final_weight and p.final_weight_grams is None:
+    if p.meal and p.meal.requires_final_weight and _final_weight_grams(p) is None:
         return f"{p.unit_price} ₽/кг, итог изменится после взвешивания"
     return f"{p.total_price} ₽"
 
@@ -75,7 +93,7 @@ def _position_user_price_text(p: OrderPosition) -> str:
 def _position_admin_price_hint(p: OrderPosition) -> str:
     if not p.meal or not p.meal.requires_final_weight:
         return ""
-    if p.final_weight_grams is None:
+    if _final_weight_grams(p) is None:
         return f" · {p.unit_price} ₽/кг · нужен финальный вес"
     return f" · {p.unit_price} ₽/кг · итог {p.total_price} ₽"
 
@@ -424,7 +442,7 @@ async def notify_order_placed(db: AsyncSession, order_id: int) -> None:
 
     lines_result = await db.execute(
         select(OrderPosition)
-        .options(joinedload(OrderPosition.meal))
+        .options(joinedload(OrderPosition.meal), selectinload(OrderPosition.unit_weights))
         .where(OrderPosition.order_id == order_id)
     )
     lines = list(lines_result.unique().scalars().all())
@@ -514,7 +532,7 @@ async def notify_user_status_changed(
 
     lines_result = await db.execute(
         select(OrderPosition)
-        .options(joinedload(OrderPosition.meal))
+        .options(joinedload(OrderPosition.meal), selectinload(OrderPosition.unit_weights))
         .where(OrderPosition.order_id == order_id)
     )
     lines = list(lines_result.unique().scalars().all())

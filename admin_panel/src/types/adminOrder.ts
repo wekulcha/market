@@ -14,6 +14,7 @@ export interface AdminOrderItem {
   weight: number | null;
   requires_final_weight: boolean;
   final_weight_grams: number | null;
+  final_weight_grams_list: number[];
   total_price: number;
   quantity: number;
 }

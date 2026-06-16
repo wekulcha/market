@@ -10,7 +10,7 @@ import {
   fetchOrderPositions,
   fetchUser,
   patchOrderPaid,
-  patchOrderPositionFinalWeight,
+  patchOrderFinalWeights,
   AdminOrderFilterStatus,
 } from "../../api/adminOrders";
 import { printKitchenTicket } from "../../utils/printKitchenTicket";
@@ -335,8 +335,8 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
 }) => {
   const [items, setItems] = useState<AdminOrderItem[]>([]);
   const [userInfo, setUserInfo] = useState<{ username: string; phone: string } | null>(null);
-  const [weightInputs, setWeightInputs] = useState<Record<number, string>>({});
-  const [weightSavingId, setWeightSavingId] = useState<number | null>(null);
+  const [weightInputs, setWeightInputs] = useState<Record<number, string[]>>({});
+  const [isWeightSaving, setIsWeightSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isPaidUpdating, setIsPaidUpdating] = useState(false);
 
@@ -353,10 +353,19 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
           setItems(positions);
           setWeightInputs(
             Object.fromEntries(
-              positions.map((position) => [
-                position.id,
-                position.final_weight_grams ? String(position.final_weight_grams / 1000) : "",
-              ])
+              positions.map((position) => {
+                const existingWeights = position.final_weight_grams_list.length > 0
+                  ? position.final_weight_grams_list
+                  : position.final_weight_grams
+                    ? [position.final_weight_grams]
+                    : [];
+                return [
+                  position.id,
+                  Array.from({ length: position.quantity }, (_, index) =>
+                    existingWeights[index] ? String(existingWeights[index] / 1000) : ""
+                  ),
+                ];
+              })
             )
           );
           setUserInfo(user);
@@ -371,6 +380,61 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
   }, [order.id, order.userId]);
 
   const printable = canPrintOrder(order.status);
+  const weightedItems = items.filter((item) => item.requires_final_weight);
+  const hasWeightedItems = weightedItems.length > 0;
+  const footerColumnCount = [hasWeightedItems, printable, true].filter(Boolean).length;
+
+  const handleWeightInputChange = (positionId: number, unitIndex: number, value: string) => {
+    setWeightInputs((prev) => {
+      const current = prev[positionId] ? [...prev[positionId]] : [];
+      current[unitIndex] = value;
+      return { ...prev, [positionId]: current };
+    });
+  };
+
+  const handleSaveWeights = async () => {
+    const payload: { positionId: number; finalWeightGramsList: number[] }[] = [];
+    for (const item of weightedItems) {
+      const values = weightInputs[item.id] ?? [];
+      if (values.length < item.quantity) {
+        alert("Заполните вес для каждой штуки");
+        return;
+      }
+      const gramsList = values.slice(0, item.quantity).map((value) => {
+        const raw = value.trim().replace(",", ".");
+        const kg = raw ? Number(raw) : NaN;
+        return Number.isFinite(kg) && kg > 0 ? Math.round(kg * 1000) : NaN;
+      });
+      if (gramsList.some((grams) => !Number.isFinite(grams) || grams <= 0)) {
+        alert("Введите вес в кг для каждой штуки, например 7.4");
+        return;
+      }
+      payload.push({ positionId: item.id, finalWeightGramsList: gramsList });
+    }
+    try {
+      setIsWeightSaving(true);
+      const updated = await patchOrderFinalWeights(order.id, payload);
+      const positions = await fetchOrderPositions(order.id);
+      setItems(positions);
+      setWeightInputs(
+        Object.fromEntries(
+          positions.map((position) => [
+            position.id,
+            Array.from({ length: position.quantity }, (_, index) =>
+              position.final_weight_grams_list[index]
+                ? String(position.final_weight_grams_list[index] / 1000)
+                : ""
+            ),
+          ])
+        )
+      );
+      onPaidUpdated(updated);
+    } catch {
+      alert("Не удалось сохранить вес");
+    } finally {
+      setIsWeightSaving(false);
+    }
+  };
 
   return (
     <div
@@ -461,45 +525,27 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                     </span>
                   </div>
                   {item.requires_final_weight ? (
-                    <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        inputMode="decimal"
-                        placeholder="Вес, кг"
-                        className="w-full rounded-xl border border-slate-200 px-2 py-1.5 text-[11px]"
-                        value={weightInputs[item.id] ?? ""}
-                        onChange={(e) =>
-                          setWeightInputs((prev) => ({ ...prev, [item.id]: e.target.value }))
-                        }
-                      />
-                      <button
-                        type="button"
-                        disabled={weightSavingId === item.id}
-                        className="rounded-xl bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60"
-                        onClick={async () => {
-                          const raw = (weightInputs[item.id] ?? "").trim().replace(",", ".");
-                          const kg = raw ? Number(raw) : NaN;
-                          if (!Number.isFinite(kg) || kg <= 0) {
-                            alert("Введите вес в кг, например 7.4");
-                            return;
-                          }
-                          try {
-                            setWeightSavingId(item.id);
-                            const updated = await patchOrderPositionFinalWeight(item.id, Math.round(kg * 1000));
-                            const positions = await fetchOrderPositions(order.id);
-                            setItems(positions);
-                            onPaidUpdated(updated);
-                          } catch {
-                            alert("Не удалось сохранить вес");
-                          } finally {
-                            setWeightSavingId(null);
-                          }
-                        }}
-                      >
-                        Сохранить
-                      </button>
+                    <div className="mt-2 space-y-1.5">
+                      {Array.from({ length: item.quantity }, (_, unitIndex) => (
+                        <label
+                          key={`${item.id}-${unitIndex}`}
+                          className="grid grid-cols-[auto_1fr] items-center gap-2 text-[11px] text-slate-500"
+                        >
+                          <span className="whitespace-nowrap">#{unitIndex + 1}</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            inputMode="decimal"
+                            placeholder="Вес, кг"
+                            className="w-full rounded-xl border border-slate-200 px-2 py-1.5 text-[11px]"
+                            value={weightInputs[item.id]?.[unitIndex] ?? ""}
+                            onChange={(e) =>
+                              handleWeightInputChange(item.id, unitIndex, e.target.value)
+                            }
+                          />
+                        </label>
+                      ))}
                     </div>
                   ) : null}
                 </div>
@@ -515,7 +561,18 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
           </div>
         ) : null}
 
-        <div className="grid gap-2 pt-1" style={{ gridTemplateColumns: printable ? "1fr 1fr" : "1fr" }}>
+        <div className="grid gap-2 pt-1" style={{ gridTemplateColumns: `repeat(${footerColumnCount}, minmax(0, 1fr))` }}>
+          {hasWeightedItems ? (
+            <button
+              type="button"
+              className="rounded-2xl px-3 py-2.5 text-sm font-medium border border-slate-200 bg-white text-slate-900 disabled:opacity-60"
+              onClick={handleSaveWeights}
+              disabled={loading || isWeightSaving}
+            >
+              Сохранить вес
+            </button>
+          ) : null}
+
           {printable ? (
             <button
               type="button"

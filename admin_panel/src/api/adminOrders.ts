@@ -98,6 +98,22 @@ export async function patchOrderPositionFinalWeight(
   return toAdminOrder(d);
 }
 
+export async function patchOrderFinalWeights(
+  orderId: number,
+  positions: { positionId: number; finalWeightGramsList: number[] }[]
+): Promise<AdminOrder> {
+  const resp = await fetch(`${BASE_URL}/order-positions/orders/${orderId}/final-weights`, {
+    method: "PATCH",
+    headers: buildAdminApiJsonHeaders(),
+    body: JSON.stringify({ positions }),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to patch final weights: ${resp.status}`);
+  }
+  const d = (await resp.json()) as OrderDto;
+  return toAdminOrder(d);
+}
+
 export async function updateAdminOrderStatus(
   orderId: number,
   status: AdminOrderStatusCode,
@@ -149,6 +165,7 @@ export async function fetchOrderPositions(orderId: number): Promise<AdminOrderIt
     unitPrice: number;
     totalPrice: number;
     finalWeightGrams?: number | null;
+    finalWeightGramsList?: number[] | null;
   }[];
   const mealIds = [...new Set(positions.map((p) => p.mealId))];
   const mealMap = new Map<number, { name: string; weight: number | null }>();
@@ -175,6 +192,7 @@ export async function fetchOrderPositions(orderId: number): Promise<AdminOrderIt
     weight: mealMap.get(p.mealId)?.weight ?? null,
     requires_final_weight: p.mealRequiresFinalWeight ?? false,
     final_weight_grams: p.finalWeightGrams ?? null,
+    final_weight_grams_list: p.finalWeightGramsList ?? [],
     total_price: Number(p.totalPrice ?? 0),
     quantity: p.quantity,
   }));

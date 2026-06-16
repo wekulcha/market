@@ -45,6 +45,7 @@ export interface AdminOrderPositionLine {
   mealName: string;
   mealWeight?: number | null;
   finalWeightGrams?: number | null;
+  finalWeightGramsList?: number[];
   quantity: number;
   unitPrice: number | string;
   totalPrice: number | string;

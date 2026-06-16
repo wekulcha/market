@@ -1,7 +1,7 @@
 from app.models.courier import Courier
 from app.models.meal import Meal
 from app.models.order import Order
-from app.models.order_position import OrderPosition
+from app.models.order_position import OrderPosition, OrderPositionUnitWeight
 from app.models.refresh_session import RefreshSession
 from app.models.restaurant import Restaurant
 from app.models.staff import Staff
@@ -15,6 +15,7 @@ __all__ = [
     "Meal",
     "Order",
     "OrderPosition",
+    "OrderPositionUnitWeight",
     "RefreshSession",
     "Restaurant",
     "Staff",

@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.database import get_db
 from app.deps.superadmin import require_superadmin
@@ -438,7 +438,7 @@ async def admin_order_detail(
         raise HTTPException(404, "Order not found")
     pos_result = await db.execute(
         select(OrderPosition)
-        .options(joinedload(OrderPosition.meal))
+        .options(joinedload(OrderPosition.meal), selectinload(OrderPosition.unit_weights))
         .where(OrderPosition.order_id == order_id)
     )
     positions = [
@@ -446,6 +446,7 @@ async def admin_order_detail(
             mealName=p.meal.name,
             mealWeight=p.meal.weight,
             finalWeightGrams=p.final_weight_grams,
+            finalWeightGramsList=[w.weight_grams for w in (p.unit_weights or [])],
             quantity=p.quantity,
             unitPrice=p.unit_price,
             totalPrice=p.total_price,
