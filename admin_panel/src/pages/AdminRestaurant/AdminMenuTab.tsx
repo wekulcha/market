@@ -344,6 +344,7 @@ export const AdminMenuTab: React.FC<AdminMenuTabProps> = ({
         image_link: form.image_link,
         category: form.category,
         price: form.price,
+        requires_final_weight: form.requires_final_weight,
         is_available: form.is_available,
       });
       setMeals((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
