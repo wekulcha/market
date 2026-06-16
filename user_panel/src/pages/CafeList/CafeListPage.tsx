@@ -11,6 +11,29 @@ import { Header } from '../../layout/Header';
 import { MiniAppShell } from '../../layout/MiniAppShell';
 import { PRODUCT_CATEGORIES, type ProductCategory } from '../../utils/productCategories';
 import { deliveryPromiseText } from '../../utils/deliveryPromise';
+import categoryMarketBg from '../../assets/category-market-bg.jpg';
+
+const DEFAULT_VISIBLE_CATEGORY_KEYS = [
+  'VEGETABLES_HERBS',
+  'FRUITS_BERRIES',
+  'DRIED_FRUITS_NUTS',
+  'MEAT_POULTRY',
+  'BREAD_BAKERY',
+  'JUICES_SODAS',
+];
+
+const DEFAULT_VISIBLE_CATEGORIES = PRODUCT_CATEGORIES.filter((category) =>
+  DEFAULT_VISIBLE_CATEGORY_KEYS.includes(category.key)
+);
+
+const CATEGORY_IMAGE_POSITIONS: Record<string, string> = {
+  VEGETABLES_HERBS: '28% 78%',
+  FRUITS_BERRIES: '80% 12%',
+  DRIED_FRUITS_NUTS: '70% 18%',
+  MEAT_POULTRY: '72% 78%',
+  BREAD_BAKERY: '47% 93%',
+  JUICES_SODAS: '88% 38%',
+};
 
 export function CafeListPage() {
   const navigate = useNavigate();
@@ -55,7 +78,8 @@ export function CafeListPage() {
     return PRODUCT_CATEGORIES.filter((category) => keys.has(category.key));
   }, [meals]);
   const visibleCategories = useMemo(() => {
-    const source = mealsLoading ? PRODUCT_CATEGORIES : categoriesWithProducts;
+    const isInitialCatalogLoading = !marketRestaurant || mealsLoading;
+    const source = isInitialCatalogLoading ? DEFAULT_VISIBLE_CATEGORIES : categoriesWithProducts;
     if (!normalizedSearch) return source;
     return source.filter((category) => {
       const haystack = [category.label, category.shortLabel, ...category.keywords]
@@ -63,7 +87,7 @@ export function CafeListPage() {
         .toLowerCase();
       return haystack.includes(normalizedSearch);
     });
-  }, [categoriesWithProducts, mealsLoading, normalizedSearch]);
+  }, [categoriesWithProducts, marketRestaurant, mealsLoading, normalizedSearch]);
 
   const combinedError = queryError ?? mealsQueryError;
   const error = combinedError
@@ -150,6 +174,7 @@ function CategoryCard({
   const style = {
     '--category-bg': category.background,
     '--category-accent': category.accent,
+    '--category-image-position': CATEGORY_IMAGE_POSITIONS[category.key] ?? '70% 70%',
   } as CSSProperties;
 
   return (
@@ -157,14 +182,19 @@ function CategoryCard({
       type="button"
       onClick={onClick}
       style={style}
-      className="relative aspect-square overflow-hidden rounded-2xl bg-[var(--category-bg)] p-3 text-left shadow-sm transition-transform active:scale-[0.98]"
+      className="group relative aspect-square overflow-hidden rounded-2xl bg-[var(--category-bg)] text-left shadow-sm ring-1 ring-black/[0.03] transition-transform active:scale-[0.98]"
     >
-      <span className="relative z-10 block text-[13px] font-medium leading-tight text-slate-900">
+      <img
+        src={categoryMarketBg}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full scale-110 object-cover transition-transform duration-300 group-active:scale-[1.08]"
+        style={{ objectPosition: 'var(--category-image-position)' }}
+      />
+      <span className="absolute inset-0 bg-gradient-to-br from-white/88 via-white/42 to-white/4" />
+      <span className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-white/38 to-transparent" />
+      <span className="relative z-10 block max-w-[78%] p-3 text-[13px] font-semibold leading-tight text-slate-950">
         {category.shortLabel}
-      </span>
-      <span className="absolute -bottom-2 -right-2 h-16 w-16 rounded-full bg-white/45" />
-      <span className="absolute bottom-3 right-2 text-3xl leading-none drop-shadow-sm">
-        {category.visual}
       </span>
       <span className="absolute bottom-3 left-3 h-1.5 w-8 rounded-full bg-[var(--category-accent)]/80" />
     </button>
