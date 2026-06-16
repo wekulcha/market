@@ -667,7 +667,8 @@ async def update_order(
     existing.updated_at = datetime.now()
 
     await db.flush()
-    await notify_user_status_changed(db, order_id)
+    actor = f"@{admin.username}" if admin.username else f"id:{admin.id}"
+    await notify_user_status_changed(db, order_id, admin_actor=actor)
 
     return _to_dto(existing)
 
@@ -761,6 +762,7 @@ async def patch_paid(
     db: AsyncSession = Depends(get_db),
     x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
     x_kulcha_internal_secret: str | None = Header(None, alias="X-Market-Internal-Secret"),
+    x_kulcha_actor_name: str | None = Header(None, alias="X-Market-Actor-Name"),
 ):
     result = await db.execute(
         select(Order)
@@ -772,15 +774,18 @@ async def patch_paid(
         raise HTTPException(404, "Order not found")
     settings = get_settings()
     if settings.internal_api_secret and x_kulcha_internal_secret == settings.internal_api_secret:
+        actor_name = x_kulcha_actor_name
         pass
     else:
         if not x_telegram_init_data:
             raise HTTPException(401, "X-Telegram-Init-Data is required")
         admin = await _require_admin_user(db, x_telegram_init_data)
         await staff_access.require_restaurant_staff(db, admin.id, order.restaurant_id)
+        actor_name = f"@{admin.username}" if admin.username else f"id:{admin.id}"
     order.is_paid = body.isPaid
     order.updated_at = datetime.now()
     await db.flush()
+    await notify_user_status_changed(db, order_id, admin_actor=actor_name, notify_user=False)
     return _to_dto(order)
 
 
@@ -790,6 +795,7 @@ async def patch_status(
     body: OrderStatusPatchDto,
     db: AsyncSession = Depends(get_db),
     x_kulcha_internal_secret: str = Header(..., alias="X-Market-Internal-Secret"),
+    x_kulcha_actor_name: str | None = Header(None, alias="X-Market-Actor-Name"),
 ):
     settings = get_settings()
     if not settings.internal_api_secret:
@@ -810,7 +816,7 @@ async def patch_status(
     order.updated_at = datetime.now()
     await db.flush()
 
-    await notify_user_status_changed(db, order_id)
+    await notify_user_status_changed(db, order_id, admin_actor=x_kulcha_actor_name)
 
     return _to_dto(order)
 

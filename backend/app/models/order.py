@@ -69,6 +69,9 @@ class Order(Base):
     review_rating: Mapped[int | None] = mapped_column(nullable=True)
     review_text: Mapped[str | None] = mapped_column(String, nullable=True)
     review_created_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    admin_order_messages: Mapped[list[dict[str, int]] | None] = mapped_column(
+        JSON, nullable=True
+    )
     review_admin_messages: Mapped[list[dict[str, int]] | None] = mapped_column(
         JSON, nullable=True
     )

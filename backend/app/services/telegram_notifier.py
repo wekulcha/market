@@ -200,16 +200,41 @@ def _format_admin_new_order(order: Order, lines: list[OrderPosition]) -> str:
     return "\n".join(parts)
 
 
-def _build_admin_keyboard(order_id: int) -> dict:
-    """Новый заказ: отмена слева, сборка справа. Дальше клавиатура обновляется из бота."""
-    return {
-        "inline_keyboard": [
-            [
-                {"text": "❌ Отмена", "callback_data": f"k:{order_id}:CAN"},
-                {"text": "🧺 Собран", "callback_data": f"k:{order_id}:ACC"},
+def _format_admin_order_state(order: Order, lines: list[OrderPosition], actor: str | None = None) -> str:
+    html_text = _format_admin_new_order(order, lines).replace("🔔 <b>Новый заказ</b>\n", "")
+    if actor:
+        return html_text.replace(
+            "\n<i>Статус ещё не меняли</i>",
+            f"\n<i>Статус изменил: {_esc(actor)}</i>",
+        )
+    if _enum_key(order.status) != "CREATED" or getattr(order, "is_paid", False):
+        return html_text.replace(
+            "\n<i>Статус ещё не меняли</i>",
+            "\n<i>Статус синхронизирован</i>",
+        )
+    return html_text
+
+
+def _build_admin_keyboard(order_id: int, status: object = "CREATED", is_paid: bool = False) -> dict:
+    status_key = _enum_key(status)
+    if status_key == "DONE":
+        if not is_paid:
+            return {"inline_keyboard": [[{"text": "💸 Оплачен", "callback_data": f"k:{order_id}:PAY"}]]}
+        return {"inline_keyboard": []}
+    if status_key == "CANCELLED":
+        return {"inline_keyboard": []}
+    if status_key == "CREATED":
+        return {
+            "inline_keyboard": [
+                [
+                    {"text": "❌ Отмена", "callback_data": f"k:{order_id}:CAN"},
+                    {"text": "🧺 Собран", "callback_data": f"k:{order_id}:ACC"},
+                ]
             ]
-        ]
-    }
+        }
+    if status_key in {"ACCEPTED", "COOKING", "DELIVERY"}:
+        return {"inline_keyboard": [[{"text": "✔️ Завершён", "callback_data": f"k:{order_id}:DON"}]]}
+    return {"inline_keyboard": []}
 
 
 def _build_review_keyboard(order_id: int) -> dict:
@@ -266,6 +291,71 @@ async def _set_review_admin_messages(
 ) -> None:
     order.review_admin_messages = messages or None
     await db.flush()
+
+
+def _order_admin_messages(order: Order) -> list[dict[str, int]]:
+    raw_messages = order.admin_order_messages
+    if not isinstance(raw_messages, list):
+        return []
+
+    messages: list[dict[str, int]] = []
+    for raw in raw_messages:
+        if not isinstance(raw, dict):
+            continue
+        try:
+            chat_id = int(raw.get("chat_id") or 0)
+            message_id = int(raw.get("message_id") or 0)
+        except (TypeError, ValueError):
+            continue
+        if chat_id and message_id > 0:
+            messages.append({"chat_id": chat_id, "message_id": message_id})
+    return messages
+
+
+async def _set_order_admin_messages(
+    db: AsyncSession, order: Order, messages: list[dict[str, int]]
+) -> None:
+    order.admin_order_messages = messages or None
+    await db.flush()
+
+
+async def _edit_order_admin_messages(
+    db: AsyncSession,
+    admin_token: str,
+    order: Order,
+    lines: list[OrderPosition],
+    *,
+    actor: str | None = None,
+) -> bool:
+    messages = _order_admin_messages(order)
+    if not messages:
+        return False
+
+    html_text = _format_admin_order_state(order, lines, actor=actor)
+    keyboard = _build_admin_keyboard(order.id, order.status, bool(getattr(order, "is_paid", False)))
+    edited_messages: list[dict[str, int]] = []
+    for item in messages:
+        ok = await telegram_bot_client.edit_message_text(
+            admin_token,
+            item["chat_id"],
+            item["message_id"],
+            html_text,
+            reply_markup=keyboard,
+        )
+        if ok:
+            edited_messages.append(item)
+        else:
+            logger.warning(
+                "Failed to edit admin order notification for order %s chat_id=%s message_id=%s",
+                order.id,
+                item["chat_id"],
+                item["message_id"],
+            )
+
+    if edited_messages != messages:
+        await _set_order_admin_messages(db, order, edited_messages)
+
+    return bool(edited_messages)
 
 
 async def _edit_order_review_admin_messages(
@@ -329,14 +419,21 @@ async def notify_order_placed(db: AsyncSession, order_id: int) -> None:
     admin_token = settings.admin_bot_token
     if admin_token:
         admin_html = _format_admin_new_order(order, lines)
-        keyboard = _build_admin_keyboard(order.id)
+        keyboard = _build_admin_keyboard(order.id, order.status, bool(getattr(order, "is_paid", False)))
+        sent_messages: list[dict[str, int]] = []
 
         group_chat_id = getattr(order.restaurant, "telegram_group_chat_id", None)
         if group_chat_id is not None:
+            chat_id = int(group_chat_id)
             sent_mid = await telegram_bot_client.send_message(
-                admin_token, int(group_chat_id), admin_html, reply_markup=keyboard
+                admin_token, chat_id, admin_html, reply_markup=keyboard
             )
             if sent_mid is not None:
+                await _set_order_admin_messages(
+                    db,
+                    order,
+                    [{"chat_id": chat_id, "message_id": int(sent_mid)}],
+                )
                 return
             logger.warning(
                 "Failed to send order %s to restaurant group chat_id=%s; fallback to staff DMs",
@@ -356,9 +453,14 @@ async def notify_order_placed(db: AsyncSession, order_id: int) -> None:
             if uid in seen_user_ids:
                 continue
             seen_user_ids.add(uid)
-            await telegram_bot_client.send_message(
+            sent_mid = await telegram_bot_client.send_message(
                 admin_token, s.user.id, admin_html, reply_markup=keyboard
             )
+            if sent_mid is not None:
+                sent_messages.append({"chat_id": int(s.user.id), "message_id": int(sent_mid)})
+
+        if sent_messages:
+            await _set_order_admin_messages(db, order, sent_messages)
 
 
 async def notify_order_placed_detached(order_id: int) -> None:
@@ -371,11 +473,14 @@ async def notify_order_placed_detached(order_id: int) -> None:
             logger.exception("Failed to send order placed notifications for order_id=%s", order_id)
 
 
-async def notify_user_status_changed(db: AsyncSession, order_id: int) -> None:
+async def notify_user_status_changed(
+    db: AsyncSession,
+    order_id: int,
+    admin_actor: str | None = None,
+    notify_user: bool = True,
+) -> None:
     settings = get_settings()
     user_token = settings.user_bot_token
-    if not user_token:
-        return
 
     result = await db.execute(
         select(Order)
@@ -393,19 +498,24 @@ async def notify_user_status_changed(db: AsyncSession, order_id: int) -> None:
     )
     lines = list(lines_result.unique().scalars().all())
 
-    chat_id = order.user.id
-    old_mid = order.user_telegram_notify_message_id
-    if old_mid:
-        await telegram_bot_client.delete_message(user_token, chat_id, old_mid)
+    if notify_user and user_token:
+        chat_id = order.user.id
+        old_mid = order.user_telegram_notify_message_id
+        if old_mid:
+            await telegram_bot_client.delete_message(user_token, chat_id, old_mid)
 
-    msg = _format_user_order_block(order, lines, "Обновление заказа", is_update=True)
-    keyboard = None
-    if _enum_key(order.status) == "DONE" and not order.review_rating:
-        keyboard = _build_review_keyboard(order.id)
-    mid = await telegram_bot_client.send_message(user_token, chat_id, msg, reply_markup=keyboard)
-    if mid is not None:
-        order.user_telegram_notify_message_id = mid
-        await db.flush()
+        msg = _format_user_order_block(order, lines, "Обновление заказа", is_update=True)
+        keyboard = None
+        if _enum_key(order.status) == "DONE" and not order.review_rating:
+            keyboard = _build_review_keyboard(order.id)
+        mid = await telegram_bot_client.send_message(user_token, chat_id, msg, reply_markup=keyboard)
+        if mid is not None:
+            order.user_telegram_notify_message_id = mid
+            await db.flush()
+
+    admin_token = settings.admin_bot_token
+    if admin_token:
+        await _edit_order_admin_messages(db, admin_token, order, lines, actor=admin_actor)
 
 
 async def notify_order_review(db: AsyncSession, order_id: int) -> None:

@@ -229,6 +229,10 @@ async def order_status_callback(query: CallbackQuery):
                     f"{API_BASE}/orders/{order_id}/paid",
                     headers={
                         "X-Market-Internal-Secret": INTERNAL_API_SECRET,
+                        "X-Market-Actor-Name": (
+                            f"@{query.from_user.username}" if query.from_user and query.from_user.username
+                            else f"id:{query.from_user.id if query.from_user else '—'}"
+                        ),
                         "Content-Type": "application/json",
                     },
                     json={"isPaid": True},
@@ -238,6 +242,10 @@ async def order_status_callback(query: CallbackQuery):
                     f"{API_BASE}/orders/{order_id}/status",
                     headers={
                         "X-Market-Internal-Secret": INTERNAL_API_SECRET,
+                        "X-Market-Actor-Name": (
+                            f"@{query.from_user.username}" if query.from_user and query.from_user.username
+                            else f"id:{query.from_user.id if query.from_user else '—'}"
+                        ),
                         "Content-Type": "application/json",
                     },
                     json={"status": status},

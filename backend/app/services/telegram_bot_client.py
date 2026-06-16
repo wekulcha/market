@@ -60,7 +60,7 @@ async def edit_message_text(
     body: dict[str, Any] = {"chat_id": chat_id, "message_id": message_id, "text": text}
     if parse_mode:
         body["parse_mode"] = parse_mode
-    if reply_markup:
+    if reply_markup is not None:
         body["reply_markup"] = reply_markup
 
     url = f"https://api.telegram.org/bot{bot_token}/editMessageText"
