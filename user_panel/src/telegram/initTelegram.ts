@@ -33,6 +33,22 @@ export function getTelegramStartParam(): string {
   return p || '';
 }
 
+function getEncodedUrlParam(source: string, key: string): string {
+  const prefix = `${key}=`;
+  const param = source
+    .replace(/^[?#]/, '')
+    .split('&')
+    .find((part) => part.startsWith(prefix));
+  if (!param) return '';
+
+  try {
+    // Telegram signs the nested initData string; decode only the outer URL layer.
+    return decodeURIComponent(param.slice(prefix.length).replace(/\+/g, '%20'));
+  } catch {
+    return '';
+  }
+}
+
 export function getTelegramInitData(): string {
   if (typeof window === 'undefined') return '';
 
@@ -42,16 +58,11 @@ export function getTelegramInitData(): string {
   }
 
   try {
-    const hash = window.location.hash.slice(1);
-    if (hash) {
-      const params = new URLSearchParams(hash);
-      const fromHash = params.get('tgWebAppData');
-      if (fromHash) return decodeURIComponent(fromHash);
-    }
+    const fromHash = getEncodedUrlParam(window.location.hash, 'tgWebAppData');
+    if (fromHash) return fromHash;
 
-    const searchParams = new URLSearchParams(window.location.search);
-    const fromSearch = searchParams.get('tgWebAppData');
-    if (fromSearch) return decodeURIComponent(fromSearch);
+    const fromSearch = getEncodedUrlParam(window.location.search, 'tgWebAppData');
+    if (fromSearch) return fromSearch;
   } catch {
     return '';
   }
