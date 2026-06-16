@@ -72,19 +72,11 @@ def _to_dto(order: Order) -> OrderDto:
     )
 
 
-def _public_review_name(user: User | None) -> str:
-    raw = (user.username if user else "") or ""
-    cleaned = raw.strip().lstrip("@").strip()
-    if not cleaned or cleaned.startswith("tg_"):
-        return "Клиент"
-    return cleaned[:40]
-
-
 def _public_review_phone(user: User | None) -> str:
     raw = (user.phone if user else "") or ""
+    if raw.strip().startswith("tg-"):
+        return "номер скрыт"
     digits = "".join(c for c in raw if c.isdigit())
-    if len(digits) >= 11 and digits.startswith("7"):
-        return f"+7***{digits[-4:]}"
     if len(digits) >= 4:
         return f"***{digits[-4:]}"
     return "номер скрыт"
@@ -93,7 +85,6 @@ def _public_review_phone(user: User | None) -> str:
 def _to_public_review_dto(order: Order) -> PublicOrderReviewDto:
     return PublicOrderReviewDto(
         id=int(order.id),
-        displayName=_public_review_name(order.user),
         maskedPhone=_public_review_phone(order.user),
         rating=int(order.review_rating or 0),
         text=order.review_text,

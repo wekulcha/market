@@ -116,12 +116,6 @@ export function CafeListPage() {
           </div>
         )}
 
-        <ReviewSummaryCard
-          summary={reviewSummary}
-          loading={reviewsLoading}
-          onClick={() => navigate('/reviews')}
-        />
-
         <section className="space-y-3">
           <div className="px-1">
             <h2 className="text-xl font-semibold text-slate-950">Каталог товаров</h2>
@@ -162,6 +156,12 @@ export function CafeListPage() {
             </div>
           )}
         </section>
+
+        <ReviewSummaryCard
+          summary={reviewSummary}
+          loading={reviewsLoading}
+          onClick={() => navigate('/reviews')}
+        />
       </div>
     </MiniAppShell>
   );

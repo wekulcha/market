@@ -3,7 +3,6 @@ import { apiFetchJson } from './client';
 
 interface CustomerReviewDto {
   id: number;
-  displayName: string;
   maskedPhone: string;
   rating: number;
   text?: string | null;
@@ -25,7 +24,6 @@ function toNumber(value: number | string | null | undefined): number | null {
 function toCustomerReview(dto: CustomerReviewDto): CustomerReview {
   return {
     id: dto.id,
-    display_name: dto.displayName,
     masked_phone: dto.maskedPhone,
     rating: dto.rating,
     text: dto.text ?? null,

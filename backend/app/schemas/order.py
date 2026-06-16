@@ -62,7 +62,6 @@ class OrderReviewPatchDto(BaseModel):
 
 class PublicOrderReviewDto(BaseModel):
     id: int
-    displayName: str
     maskedPhone: str
     rating: int
     text: str | None = None

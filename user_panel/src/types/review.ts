@@ -1,6 +1,5 @@
 export interface CustomerReview {
   id: number;
-  display_name: string;
   masked_phone: string;
   rating: number;
   text: string | null;
