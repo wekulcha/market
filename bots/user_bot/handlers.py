@@ -93,14 +93,14 @@ async def cmd_start(message: Message):
                             "━━━━━━━━━━━━━━\n"
                             "Контакт сохранён. Для заказа нужно указать российский номер телефона "
                             "в профиле или при оформлении.",
-                            reply_markup=main_menu_keyboard(),
+                            reply_markup=main_menu_keyboard(user_id),
                         )
                         return
                     await message.answer(
                         "<b>Добро пожаловать в Kulcha Market!</b>\n"
                         "━━━━━━━━━━━━━━\n"
                         "Рады снова вас видеть. Откройте каталог, корзину или профиль кнопками ниже.",
-                        reply_markup=main_menu_keyboard(),
+                        reply_markup=main_menu_keyboard(user_id),
                     )
                     return
                 await message.answer(
@@ -149,24 +149,24 @@ async def on_contact(message: Message):
                         "━━━━━━━━━━━━━━\n"
                         "Для заказа нужно указать российский номер телефона в профиле "
                         "или при оформлении.",
-                        reply_markup=main_menu_keyboard(),
+                        reply_markup=main_menu_keyboard(user_id),
                     )
                     return
                 await message.answer(
                     "<b>Готово!</b>\n"
                     "━━━━━━━━━━━━━━\n"
                     "Регистрация прошла успешно. Можно выбирать товары и заказывать в мини-приложении.",
-                    reply_markup=main_menu_keyboard(),
+                    reply_markup=main_menu_keyboard(user_id),
                 )
             else:
                 await message.answer(
                     "Не удалось сохранить профиль. Попробуйте позже или напишите в поддержку.",
-                    reply_markup=main_menu_keyboard(),
+                    reply_markup=main_menu_keyboard(user_id),
                 )
         except Exception as e:
             await message.answer(
                 f"Ошибка сети: <code>{e}</code>",
-                reply_markup=main_menu_keyboard(),
+                reply_markup=main_menu_keyboard(user_id),
             )
 
 

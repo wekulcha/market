@@ -8,9 +8,15 @@ import {
   type ReactNode,
 } from 'react';
 import type { User } from '../types/user';
-import { loginWithTelegram, logoutSession, refreshSession, type AuthSession } from '../api/auth';
+import {
+  loginWithBotToken,
+  loginWithTelegram,
+  logoutSession,
+  refreshSession,
+  type AuthSession,
+} from '../api/auth';
 import { ApiError, configureApiClient, resetApiClient } from '../api/client';
-import { waitForTelegramInitData } from '../telegram/initTelegram';
+import { getBotAuthToken, waitForTelegramInitData } from '../telegram/initTelegram';
 
 interface AuthContextValue {
   currentUser: User | null;
@@ -45,6 +51,16 @@ async function resolveSession(): Promise<ResolveResult> {
     return { ok: true, session: refreshed };
   } catch {
     // Refresh cookie may be absent or expired. Fall through to Telegram login.
+  }
+
+  const botToken = getBotAuthToken();
+  if (botToken) {
+    try {
+      const loggedIn = await loginWithBotToken(botToken);
+      return { ok: true, session: loggedIn };
+    } catch {
+      // Expired/invalid bot token: fall through to Telegram initData.
+    }
   }
 
   let initData = await waitForTelegramInitData(4500, 50);

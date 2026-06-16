@@ -176,6 +176,22 @@ async def login_telegram_user(
     return await _issue_auth_session(db, response, user)
 
 
+@router.post("/bot/user", response_model=AuthSessionDto)
+async def login_user_bot_token(
+    body: BotTokenRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """Fallback auth for Telegram clients that open WebApp without initData."""
+    from app.config import get_settings
+
+    settings = get_settings()
+    telegram_id = _verify_bot_token(body.token, settings.user_bot_token)
+    user = await ensure_customer(db, telegram_id, None)
+    await log_user_activity(db, user_id=user.id, event="auth_login", source="bot_webapp_token")
+    return await _issue_auth_session(db, response, user)
+
+
 @router.post("/telegram/superadmin", response_model=AuthSessionDto)
 async def login_telegram_superadmin(
     body: TelegramLoginRequest,

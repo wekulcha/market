@@ -44,6 +44,19 @@ export async function loginWithTelegram(initDataRaw: string): Promise<AuthSessio
   return toSession(dto);
 }
 
+export async function loginWithBotToken(token: string): Promise<AuthSession> {
+  const dto = await apiFetchJson<AuthSessionDto>(
+    '/auth/bot/user',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    },
+    { retryOn401: false }
+  );
+  return toSession(dto);
+}
+
 export async function refreshSession(): Promise<AuthSession> {
   const dto = await apiFetchJson<AuthSessionDto>(
     '/auth/refresh',
