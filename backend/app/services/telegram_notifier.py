@@ -60,7 +60,10 @@ def _final_weight_grams(p: OrderPosition) -> int | None:
 
 
 def _format_kg(grams: int) -> str:
-    return f"{(Decimal(grams) / Decimal('1000')).normalize()} кг"
+    text = format((Decimal(grams) / Decimal("1000")).normalize(), "f")
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return f"{text} кг"
 
 
 def _position_name_qty(p: OrderPosition, *, include_weight: bool) -> str:
@@ -86,7 +89,7 @@ def _position_name_qty(p: OrderPosition, *, include_weight: bool) -> str:
 
 def _position_user_price_text(p: OrderPosition) -> str:
     if p.meal and p.meal.requires_final_weight and _final_weight_grams(p) is None:
-        return f"{p.unit_price} ₽/кг, итог изменится после взвешивания"
+        return "итог изменится после взвешивания"
     return f"{p.total_price} ₽"
 
 
@@ -94,8 +97,8 @@ def _position_admin_price_hint(p: OrderPosition) -> str:
     if not p.meal or not p.meal.requires_final_weight:
         return ""
     if _final_weight_grams(p) is None:
-        return f" · {p.unit_price} ₽/кг · нужен финальный вес"
-    return f" · {p.unit_price} ₽/кг · итог {p.total_price} ₽"
+        return " · нужен финальный вес"
+    return f" · итог {p.total_price} ₽"
 
 
 def _compact_place_text(v: str | None) -> str:

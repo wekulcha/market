@@ -3,11 +3,13 @@ import {
   AnalyticsPeriod,
   AdminAnalyticsSummary,
   AdminAnalyticsDailySeries,
+  AdminAnalyticsDayReport,
 } from "../../types/adminAnalytics";
 import type { AdminOrder } from "../../types/adminOrder";
 import {
   fetchAnalyticsSummary,
   fetchAnalyticsDaily,
+  fetchAnalyticsDayReport,
 } from "../../api/adminAnalytics";
 import {
   fetchAdminOrders,
@@ -32,6 +34,13 @@ function formatDateLabel(iso: string): string {
   return `${day}.${month}`;
 }
 
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  const hh = d.getHours().toString().padStart(2, "0");
+  const mm = d.getMinutes().toString().padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
 interface AnalyticsSummaryCardsProps {
   summary: AdminAnalyticsSummary;
 }
@@ -48,10 +57,25 @@ const AnalyticsSummaryCards: React.FC<AnalyticsSummaryCardsProps> = ({
     unpaid_orders_count,
     paid_revenue,
     unpaid_revenue,
+    revenue_delta_percent,
   } = summary;
 
   const totalOrders = orders_count || 1;
   const deliveryShare = Math.round((delivery_orders / totalOrders) * 100);
+  const revenueDelta =
+    typeof revenue_delta_percent === "number" && Number.isFinite(revenue_delta_percent)
+      ? revenue_delta_percent
+      : null;
+  const revenueDeltaText =
+    revenueDelta === null
+      ? "нет данных"
+      : `${revenueDelta >= 0 ? "+" : ""}${Math.round(revenueDelta)}%`;
+  const revenueDeltaClass =
+    revenueDelta === null
+      ? "text-emerald-700"
+      : revenueDelta >= 0
+        ? "text-emerald-700"
+        : "text-rose-700";
 
   return (
     <div className="grid justify-start gap-2 [grid-template-columns:repeat(auto-fit,minmax(190px,220px))]">
@@ -64,7 +88,10 @@ const AnalyticsSummaryCards: React.FC<AnalyticsSummaryCardsProps> = ({
           {formatCurrency(revenue)}
         </div>
         <div className="text-[10px] text-emerald-700">
-          за выбранный период
+          оплаченные заказы
+        </div>
+        <div className={"text-[10px] font-semibold " + revenueDeltaClass}>
+          {revenueDeltaText} к прошлому периоду
         </div>
       </div>
 
@@ -85,7 +112,7 @@ const AnalyticsSummaryCards: React.FC<AnalyticsSummaryCardsProps> = ({
         <div className="text-sm font-bold text-violet-900">
           {formatCurrency(avg_check)}
         </div>
-        <div className="text-[10px] text-violet-700">выручка / заказы</div>
+        <div className="text-[10px] text-violet-700">по оплаченным заказам</div>
       </div>
 
       {/* Delivery */}
@@ -190,6 +217,135 @@ const AnalyticsDailyChart: React.FC<AnalyticsDailyChartProps> = ({
   );
 };
 
+interface AnalyticsDayButtonsProps {
+  daily: AdminAnalyticsDailySeries | null;
+  selectedDate: string | null;
+  onSelectDate: (date: string) => void;
+}
+
+const AnalyticsDayButtons: React.FC<AnalyticsDayButtonsProps> = ({
+  daily,
+  selectedDate,
+  onSelectDate,
+}) => {
+  const series = daily;
+  const points = series?.points ?? [];
+  if (!series || !points.length || series.period === "today") return null;
+
+  return (
+    <div className="bg-white rounded-3xl p-3 border border-slate-100 shadow-sm space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-semibold text-slate-900">Отчеты по дням</div>
+        <div className="text-[10px] text-slate-500">{series.from_date} - {series.to_date}</div>
+      </div>
+      <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1">
+        {points.map((point) => {
+          const isActive = selectedDate === point.date;
+          return (
+            <button
+              key={point.date}
+              type="button"
+              onClick={() => onSelectDate(point.date)}
+              className={
+                "shrink-0 rounded-2xl border px-2.5 py-2 text-left transition-colors min-w-[76px] " +
+                (isActive
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-200 bg-slate-50 text-slate-700")
+              }
+            >
+              <span className="block text-[11px] font-semibold">{formatDateLabel(point.date)}</span>
+              <span className="block text-[10px] opacity-80">{formatCurrency(point.revenue)}</span>
+              <span className="block text-[10px] opacity-70">{point.orders_count} зак.</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+interface AnalyticsDayReportPanelProps {
+  report: AdminAnalyticsDayReport | null;
+  loading: boolean;
+}
+
+const AnalyticsDayReportPanel: React.FC<AnalyticsDayReportPanelProps> = ({
+  report,
+  loading,
+}) => {
+  if (loading) {
+    return (
+      <div className="bg-white rounded-3xl p-3 border border-slate-100 shadow-sm text-xs text-slate-500">
+        Загружаем отчет дня...
+      </div>
+    );
+  }
+  if (!report) return null;
+
+  return (
+    <div className="bg-white rounded-3xl p-3 border border-slate-100 shadow-sm space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-semibold text-slate-900">
+          Отчет за {formatDateLabel(report.date)}
+        </div>
+        <div className="text-[10px] text-slate-500">
+          {report.delivery_orders} доставка · {report.dine_in_orders} на месте
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="rounded-2xl bg-emerald-50 border border-emerald-100 px-3 py-2">
+          <div className="text-[10px] uppercase font-semibold text-emerald-700">Выручка</div>
+          <div className="text-sm font-bold text-emerald-900">{formatCurrency(report.revenue)}</div>
+        </div>
+        <div className="rounded-2xl bg-sky-50 border border-sky-100 px-3 py-2">
+          <div className="text-[10px] uppercase font-semibold text-sky-700">Заказы</div>
+          <div className="text-sm font-bold text-sky-900">{report.orders_count}</div>
+        </div>
+        <div className="rounded-2xl bg-violet-50 border border-violet-100 px-3 py-2">
+          <div className="text-[10px] uppercase font-semibold text-violet-700">Средний чек</div>
+          <div className="text-sm font-bold text-violet-900">{formatCurrency(report.avg_check)}</div>
+        </div>
+        <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-2">
+          <div className="text-[10px] uppercase font-semibold text-slate-500">Оплата</div>
+          <div className="text-sm font-bold text-slate-900">
+            {report.paid_orders_count}/{report.orders_count}
+          </div>
+        </div>
+      </div>
+      {report.orders.length === 0 ? (
+        <div className="text-xs text-slate-500">За этот день заказов нет.</div>
+      ) : (
+        <div className="rounded-2xl border border-slate-100 overflow-hidden">
+          {report.orders.map((order) => (
+            <div
+              key={order.id}
+              className="grid grid-cols-[56px_1fr_auto_auto] items-center gap-2 px-3 py-2 border-b border-slate-50 last:border-0"
+            >
+              <span className="text-[11px] font-semibold text-slate-900">№{order.id}</span>
+              <span className="text-[11px] text-slate-600 truncate">
+                {STATUS_LABEL[order.status] ?? order.status} · {formatTime(order.createdAt)}
+              </span>
+              <span className="text-[11px] font-semibold text-slate-900 whitespace-nowrap">
+                {Math.round(order.total)} ₽
+              </span>
+              <span
+                className={
+                  "rounded-full px-2 py-0.5 text-[9px] font-semibold whitespace-nowrap " +
+                  (order.isPaid
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-rose-50 text-rose-700")
+                }
+              >
+                {order.isPaid ? "Оплачен" : "Не оплачен"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const STATUS_LABEL: Record<string, string> = {
   CREATED: "Принят",
   ACCEPTED: "Собран",
@@ -224,6 +380,9 @@ export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
   const [todayTotals, setTodayTotals] = useState<TodayTotalItem[]>([]);
   const [checkedTotals, setCheckedTotals] = useState<Record<number, boolean>>({});
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+  const [selectedReportDate, setSelectedReportDate] = useState<string | null>(null);
+  const [selectedDayReport, setSelectedDayReport] = useState<AdminAnalyticsDayReport | null>(null);
+  const [dayReportLoading, setDayReportLoading] = useState(false);
 
   useEffect(() => {
     if (!restaurantId || Number.isNaN(restaurantId)) return;
@@ -238,6 +397,23 @@ export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
         ]);
         setSummary(s);
         setDaily(d);
+        if (period === "today") {
+          setSelectedReportDate(null);
+          setSelectedDayReport(null);
+        } else {
+          const nextSelectedDate =
+            d.points
+              .slice()
+              .reverse()
+              .find((point) => point.orders_count > 0 || point.revenue > 0)?.date ??
+            d.points[d.points.length - 1]?.date ??
+            null;
+          setSelectedReportDate((prev) =>
+            prev && d.points.some((point) => point.date === prev)
+              ? prev
+              : nextSelectedDate
+          );
+        }
       } catch (err) {
         console.error(err);
         setError("Не удалось загрузить аналитику. Попробуйте позже.");
@@ -250,16 +426,41 @@ export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
   }, [restaurantId, period]);
 
   useEffect(() => {
+    if (!restaurantId || Number.isNaN(restaurantId) || period === "today" || !selectedReportDate) {
+      setSelectedDayReport(null);
+      setDayReportLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const loadDayReport = async () => {
+      try {
+        setDayReportLoading(true);
+        const report = await fetchAnalyticsDayReport(restaurantId, selectedReportDate);
+        if (!cancelled) setSelectedDayReport(report);
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) setSelectedDayReport(null);
+      } finally {
+        if (!cancelled) setDayReportLoading(false);
+      }
+    };
+    void loadDayReport();
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurantId, period, selectedReportDate]);
+
+  useEffect(() => {
     if (!restaurantId || Number.isNaN(restaurantId) || !["today_orders", "today_totals"].includes(view)) return;
     let cancelled = false;
     const loadToday = async () => {
       try {
         setTodayLoading(true);
         const data = await fetchAdminOrders(restaurantId, "ALL", { todayOnly: true });
+        const activeOrders = data.filter((order) => order.status !== "CANCELLED");
         if (cancelled) return;
-        setTodayOrders(data);
+        setTodayOrders(activeOrders);
         if (view === "today_totals") {
-          const activeOrders = data.filter((order) => order.status !== "CANCELLED");
           const positionGroups = new Map<number, TodayTotalItem>();
           await Promise.all(
             activeOrders.map(async (order) => {
@@ -405,6 +606,17 @@ export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
         <>
           <AnalyticsSummaryCards summary={summary} />
           <AnalyticsDailyChart daily={daily} maxRevenue={maxRevenue} />
+          <AnalyticsDayButtons
+            daily={daily}
+            selectedDate={selectedReportDate}
+            onSelectDate={setSelectedReportDate}
+          />
+          {period !== "today" && (
+            <AnalyticsDayReportPanel
+              report={selectedDayReport}
+              loading={dayReportLoading}
+            />
+          )}
         </>
       )}
 

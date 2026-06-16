@@ -58,7 +58,7 @@ def _delivery_lines(section: dict[str, Any]) -> list[str]:
         "<b>Доставка</b>",
         (
             f"Заказы: <b>{total_orders}</b>"
-            f" · сумма <b>{_money(section.get('revenue'))}</b>"
+            f" · выручка <b>{_money(section.get('revenue'))}</b>"
             f" · средний чек {_money(section.get('avgCheck'))}"
         ),
         (
@@ -70,11 +70,6 @@ def _delivery_lines(section: dict[str, Any]) -> list[str]:
             "Не оплачено: "
             f"<b>{section.get('unpaidOrdersCount', 0)}</b>"
             f" · {_money(section.get('unpaidRevenue'))}"
-        ),
-        (
-            "Отменено: "
-            f"<b>{section.get('cancelledOrdersCount', 0)}</b>"
-            f" · {_money(section.get('cancelledRevenue'))}"
         ),
         (
             f"Товары: {_money(section.get('itemsTotal'))}"
@@ -135,7 +130,7 @@ def build_today_report_messages(summary: dict[str, Any]) -> list[str]:
             f"<b>{html.escape(str(restaurant.get('restaurantName') or 'Магазин'))}</b>",
             "━━━━━━━━━━━━━━",
             f"Всего заказов: {restaurant.get('totalOrdersCount', 0)}",
-            f"Общая сумма: {_money(restaurant.get('totalRevenue'))}",
+            f"Выручка: {_money(restaurant.get('totalRevenue'))}",
             f"Средний чек: {_money(restaurant.get('avgCheck'))}",
             (
                 "Оплачено: "
@@ -146,11 +141,6 @@ def build_today_report_messages(summary: dict[str, Any]) -> list[str]:
                 "Не оплачено: "
                 f"{restaurant.get('unpaidOrdersCount', 0)}"
                 f" на {_money(restaurant.get('unpaidRevenue'))}"
-            ),
-            (
-                "Отменено: "
-                f"{restaurant.get('cancelledOrdersCount', 0)}"
-                f" на {_money(restaurant.get('cancelledRevenue'))}"
             ),
             "",
         ]
@@ -275,7 +265,7 @@ def build_today_report_pdf(summary: dict[str, Any]) -> bytes | None:
         summary_rows = [
             ["Показатель", "Значение"],
             ["Всего заказов", str(restaurant.get("totalOrdersCount", 0))],
-            ["Общая сумма", _money(restaurant.get("totalRevenue"))],
+            ["Выручка", _money(restaurant.get("totalRevenue"))],
             ["Средний чек", _money(restaurant.get("avgCheck"))],
             [
                 "Оплачено",
@@ -284,10 +274,6 @@ def build_today_report_pdf(summary: dict[str, Any]) -> bytes | None:
             [
                 "Не оплачено",
                 f"{restaurant.get('unpaidOrdersCount', 0)} · {_money(restaurant.get('unpaidRevenue'))}",
-            ],
-            [
-                "Отменено",
-                f"{restaurant.get('cancelledOrdersCount', 0)} · {_money(restaurant.get('cancelledRevenue'))}",
             ],
         ]
         summary_table = Table(summary_rows, colWidths=[170, 300], hAlign="LEFT")
@@ -299,7 +285,7 @@ def build_today_report_pdf(summary: dict[str, Any]) -> bytes | None:
         story.append(Paragraph("Доставка", heading_style))
         delivery_rows = [
             ["Заказы", str(section.get("ordersCount", 0))],
-            ["Сумма", _money(section.get("revenue"))],
+            ["Выручка", _money(section.get("revenue"))],
             ["Средний чек", _money(section.get("avgCheck"))],
             ["Товары", _money(section.get("itemsTotal"))],
             ["Доставка", _money(section.get("deliveryFeeTotal"))],

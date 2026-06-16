@@ -52,7 +52,7 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
     keywords: ['орехи', 'сухофрукты', 'курага', 'изюм'],
     background: '#fff0bf',
     accent: '#c4892b',
-    visual: '🥜 🌰 🍑',
+    visual: '🥜 🌰',
   },
   {
     key: 'MEAT_POULTRY',

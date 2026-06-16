@@ -174,6 +174,20 @@ function CategoryCard({
   category: ProductCategory;
   onClick: () => void;
 }) {
+  const visualItems = category.visual.split(/\s+/).filter(Boolean);
+  const visualLayouts =
+    visualItems.length > 2
+      ? [
+          { left: '25%', top: '52%', rotate: -10 },
+          { left: '53%', top: '40%', rotate: 6 },
+          { left: '76%', top: '62%', rotate: 13 },
+        ]
+      : visualItems.length > 1
+        ? [
+            { left: '38%', top: '55%', rotate: -8 },
+            { left: '68%', top: '50%', rotate: 10 },
+          ]
+        : [{ left: '58%', top: '54%', rotate: -4 }];
   const style = {
     '--category-bg': category.background,
     '--category-accent': category.accent,
@@ -184,16 +198,36 @@ function CategoryCard({
       type="button"
       onClick={onClick}
       style={style}
-      className="relative aspect-square overflow-hidden rounded-2xl bg-[var(--category-bg)] p-3 text-left shadow-sm transition-transform active:scale-[0.98]"
+      className="relative aspect-square overflow-hidden rounded-2xl bg-[var(--category-bg)] text-left shadow-sm transition-transform active:scale-[0.98]"
     >
-      <span className="relative z-10 block text-[13px] font-medium leading-tight text-slate-900">
+      <span className="absolute left-3 top-3 z-20 block max-w-[6.8rem] text-[13px] font-semibold leading-tight text-slate-950">
         {category.shortLabel}
       </span>
       <span className="absolute -bottom-2 -right-2 h-16 w-16 rounded-full bg-white/45" />
-      <span className="absolute bottom-3 right-2 text-3xl leading-none drop-shadow-sm">
-        {category.visual}
-      </span>
-      <span className="absolute bottom-3 left-3 h-1.5 w-8 rounded-full bg-[var(--category-accent)]/80" />
+      <span className="absolute bottom-4 left-4 h-11 w-11 rounded-full bg-white/25 min-[380px]:bottom-3 min-[380px]:left-3" />
+      <div
+        className="absolute bottom-3 right-1 z-10 h-16 w-24 min-[380px]:bottom-2 min-[380px]:h-12 min-[380px]:w-[76px]"
+        aria-hidden="true"
+      >
+        {visualItems.map((icon, index) => {
+          const layout = visualLayouts[index] ?? visualLayouts[visualLayouts.length - 1];
+
+          return (
+            <span
+              key={`${icon}-${index}`}
+              className="absolute block text-[34px] leading-none drop-shadow-sm min-[380px]:text-[29px]"
+              style={{
+                left: layout.left,
+                top: layout.top,
+                transform: `translate(-50%, -50%) rotate(${layout.rotate}deg)`,
+              }}
+            >
+              {icon}
+            </span>
+          );
+        })}
+      </div>
+      <span className="absolute bottom-3 left-3 z-10 h-1.5 w-8 rounded-full bg-[var(--category-accent)]/80" />
     </button>
   );
 }

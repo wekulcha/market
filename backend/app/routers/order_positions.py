@@ -81,6 +81,7 @@ async def get_all(
     mealId: int | None = None,
     db: AsyncSession = Depends(get_db),
     x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
+    x_kulcha_internal_secret: str | None = Header(None, alias="X-Market-Internal-Secret"),
     authorization: str | None = Header(None, alias="Authorization"),
 ):
     if orderId is not None:
@@ -93,13 +94,17 @@ async def get_all(
         if not order:
             raise HTTPException(404, "Order not found")
 
+        settings = get_settings()
+        internal_authorized = bool(
+            settings.internal_api_secret
+            and x_kulcha_internal_secret == settings.internal_api_secret
+        )
         bearer_user = await get_user_from_bearer(db, authorization)
-        if bearer_user and bearer_user.id == order.user_id:
+        if internal_authorized or (bearer_user and bearer_user.id == order.user_id):
             pass
         else:
             if not x_telegram_init_data:
                 raise HTTPException(401, "Telegram init data required")
-            settings = get_settings()
             tg = verify_telegram_init_data(x_telegram_init_data, settings.admin_bot_token)
             if not tg:
                 raise HTTPException(401, "Invalid Telegram init data")

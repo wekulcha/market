@@ -188,6 +188,7 @@ def _empty_type_summary(order_type: str) -> dict[str, object]:
 
 def _build_type_summary(data: dict[str, object]) -> DailyOrderTypeSummaryDto:
     orders_count = int(data["ordersCount"])
+    paid_orders_count = int(data["paidOrdersCount"])
     revenue = Decimal(data["revenue"])
     positions_raw = data["positions"]
     assert isinstance(positions_raw, defaultdict)
@@ -203,12 +204,12 @@ def _build_type_summary(data: dict[str, object]) -> DailyOrderTypeSummaryDto:
             key=lambda item: (-int(item[1]["quantity"]), item[0].lower()),
         )
     ]
-    avg_check = (revenue / orders_count) if orders_count > 0 else Decimal("0")
+    avg_check = (revenue / paid_orders_count) if paid_orders_count > 0 else Decimal("0")
     return DailyOrderTypeSummaryDto(
         orderType=str(data["orderType"]),
         ordersCount=orders_count,
         revenue=revenue,
-        paidOrdersCount=int(data["paidOrdersCount"]),
+        paidOrdersCount=paid_orders_count,
         unpaidOrdersCount=int(data["unpaidOrdersCount"]),
         paidRevenue=Decimal(data["paidRevenue"]),
         unpaidRevenue=Decimal(data["unpaidRevenue"]),
@@ -390,37 +391,33 @@ async def get_today_summary(
         }
 
     for order in orders:
+        if order.status == OrderStatus.CANCELLED:
+            continue
+
         bucket = restaurant_buckets[order.restaurant_id]
         bucket["totalOrdersCount"] = int(bucket["totalOrdersCount"]) + 1
-        bucket["totalRevenue"] = Decimal(bucket["totalRevenue"]) + order.total
         if order.is_paid:
             bucket["paidOrdersCount"] = int(bucket["paidOrdersCount"]) + 1
             bucket["paidRevenue"] = Decimal(bucket["paidRevenue"]) + order.total
+            bucket["totalRevenue"] = Decimal(bucket["totalRevenue"]) + order.total
         else:
             bucket["unpaidOrdersCount"] = int(bucket["unpaidOrdersCount"]) + 1
             bucket["unpaidRevenue"] = Decimal(bucket["unpaidRevenue"]) + order.total
-        if order.status == OrderStatus.CANCELLED:
-            bucket["cancelledOrdersCount"] = int(bucket["cancelledOrdersCount"]) + 1
-            bucket["cancelledRevenue"] = Decimal(bucket["cancelledRevenue"]) + order.total
 
         section_key = "delivery" if order.order_type == OrderType.DELIVERY else "dineIn"
         section = bucket[section_key]
         assert isinstance(section, dict)
         section["ordersCount"] = int(section["ordersCount"]) + 1
-        section["revenue"] = Decimal(section["revenue"]) + order.total
-        section["itemsTotal"] = Decimal(section["itemsTotal"]) + order.items_total
-        section["deliveryFeeTotal"] = Decimal(section["deliveryFeeTotal"]) + order.delivery_fee
-        section["serviceFeeTotal"] = Decimal(section["serviceFeeTotal"]) + order.service_fee
         if order.is_paid:
             section["paidOrdersCount"] = int(section["paidOrdersCount"]) + 1
             section["paidRevenue"] = Decimal(section["paidRevenue"]) + order.total
+            section["revenue"] = Decimal(section["revenue"]) + order.total
+            section["itemsTotal"] = Decimal(section["itemsTotal"]) + order.items_total
+            section["deliveryFeeTotal"] = Decimal(section["deliveryFeeTotal"]) + order.delivery_fee
+            section["serviceFeeTotal"] = Decimal(section["serviceFeeTotal"]) + order.service_fee
         else:
             section["unpaidOrdersCount"] = int(section["unpaidOrdersCount"]) + 1
             section["unpaidRevenue"] = Decimal(section["unpaidRevenue"]) + order.total
-        if order.status == OrderStatus.CANCELLED:
-            section["cancelledOrdersCount"] = int(section["cancelledOrdersCount"]) + 1
-            section["cancelledRevenue"] = Decimal(section["cancelledRevenue"]) + order.total
-            continue
         if order.order_type == OrderType.DELIVERY and order.courier_id is not None:
             section["courierAssignedOrdersCount"] = int(section["courierAssignedOrdersCount"]) + 1
         positions = section["positions"]
@@ -439,6 +436,7 @@ async def get_today_summary(
     for restaurant_id in restaurant_ids:
         bucket = restaurant_buckets[restaurant_id]
         total_orders = int(bucket["totalOrdersCount"])
+        paid_orders = int(bucket["paidOrdersCount"])
         total_revenue = Decimal(bucket["totalRevenue"])
         restaurant_summaries.append(
             DailyRestaurantSummaryDto(
@@ -452,7 +450,7 @@ async def get_today_summary(
                 unpaidRevenue=Decimal(bucket["unpaidRevenue"]),
                 cancelledOrdersCount=int(bucket["cancelledOrdersCount"]),
                 cancelledRevenue=Decimal(bucket["cancelledRevenue"]),
-                avgCheck=(total_revenue / total_orders) if total_orders > 0 else Decimal("0"),
+                avgCheck=(total_revenue / paid_orders) if paid_orders > 0 else Decimal("0"),
                 dineIn=_build_type_summary(bucket["dineIn"]),
                 delivery=_build_type_summary(bucket["delivery"]),
             )
@@ -843,6 +841,8 @@ async def patch_paid(
         admin = await _require_admin_user(db, x_telegram_init_data)
         await staff_access.require_restaurant_staff(db, admin.id, order.restaurant_id)
         actor_name = f"@{admin.username}" if admin.username else f"id:{admin.id}"
+    if order.status == OrderStatus.CANCELLED and body.isPaid:
+        raise HTTPException(400, "Отменённый заказ нельзя отметить оплаченным")
     order.is_paid = body.isPaid
     order.updated_at = datetime.now()
     await db.flush()

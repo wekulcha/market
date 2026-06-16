@@ -382,7 +382,8 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
   const printable = canPrintOrder(order.status);
   const weightedItems = items.filter((item) => item.requires_final_weight);
   const hasWeightedItems = weightedItems.length > 0;
-  const footerColumnCount = [hasWeightedItems, printable, true].filter(Boolean).length;
+  const canShowPaidAction = order.status !== "CANCELLED";
+  const footerColumnCount = [hasWeightedItems, printable, canShowPaidAction].filter(Boolean).length;
 
   const handleWeightInputChange = (positionId: number, unitIndex: number, value: string) => {
     setWeightInputs((prev) => {
@@ -561,6 +562,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
           </div>
         ) : null}
 
+        {footerColumnCount > 0 ? (
         <div className="grid gap-2 pt-1" style={{ gridTemplateColumns: `repeat(${footerColumnCount}, minmax(0, 1fr))` }}>
           {hasWeightedItems ? (
             <button
@@ -587,11 +589,11 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
             </button>
           ) : null}
 
-          {order.isPaid ? (
+          {canShowPaidAction && order.isPaid ? (
             <div className="rounded-2xl px-3 py-2.5 text-sm font-medium border border-emerald-200 bg-emerald-50 text-emerald-900 text-center">
               Заказ оплачен
             </div>
-          ) : (
+          ) : canShowPaidAction ? (
             <button
               type="button"
               className="rounded-2xl px-3 py-2.5 text-sm font-medium border border-emerald-200 bg-emerald-50 text-emerald-900 disabled:opacity-60"
@@ -610,8 +612,9 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
             >
               Оплачен
             </button>
-          )}
+          ) : null}
         </div>
+        ) : null}
       </div>
     </div>
   );
