@@ -17,6 +17,7 @@ class OrderPosition(Base):
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
     total_price: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
+    final_weight_grams: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     meal = relationship("Meal", lazy="joined")
     order = relationship("Order", lazy="joined")

@@ -10,7 +10,13 @@ class OrderPositionDto(BaseModel):
     mealId: int | None = None
     mealName: str | None = None
     mealWeight: int | None = None
+    mealRequiresFinalWeight: bool | None = None
     orderId: int | None = None
     quantity: int | None = None
     unitPrice: Decimal | None = None
     totalPrice: Decimal | None = None
+    finalWeightGrams: int | None = None
+
+
+class OrderPositionFinalWeightPatchDto(BaseModel):
+    finalWeightGrams: int | None = None

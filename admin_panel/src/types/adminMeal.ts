@@ -6,6 +6,7 @@ export interface AdminMealCreate {
   image_link?: string | null;
   category: string;
   price: number;
+  requires_final_weight?: boolean;
   is_available?: boolean;
 }
 
@@ -18,6 +19,7 @@ export interface Meal {
   image_link: string | null;
   category: string;
   price: number;
+  requires_final_weight: boolean;
   is_available: boolean;
   restaurant_id: number;
 }

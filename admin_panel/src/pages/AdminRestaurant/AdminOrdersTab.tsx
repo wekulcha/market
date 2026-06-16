@@ -10,6 +10,7 @@ import {
   fetchOrderPositions,
   fetchUser,
   patchOrderPaid,
+  patchOrderPositionFinalWeight,
   AdminOrderFilterStatus,
 } from "../../api/adminOrders";
 import { printKitchenTicket } from "../../utils/printKitchenTicket";
@@ -334,6 +335,8 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
 }) => {
   const [items, setItems] = useState<AdminOrderItem[]>([]);
   const [userInfo, setUserInfo] = useState<{ username: string; phone: string } | null>(null);
+  const [weightInputs, setWeightInputs] = useState<Record<number, string>>({});
+  const [weightSavingId, setWeightSavingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPaidUpdating, setIsPaidUpdating] = useState(false);
 
@@ -348,6 +351,14 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
         ]);
         if (!cancelled) {
           setItems(positions);
+          setWeightInputs(
+            Object.fromEntries(
+              positions.map((position) => [
+                position.id,
+                position.final_weight_grams ? String(position.final_weight_grams / 1000) : "",
+              ])
+            )
+          );
           setUserInfo(user);
         }
       } catch {
@@ -440,13 +451,57 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
             ) : (
               items.map((item) => (
                 <div
-                  key={`${item.meal_id}-${item.quantity}`}
-                  className="flex items-center justify-between text-xs text-slate-700"
+                  key={`${item.id}-${item.quantity}`}
+                  className="rounded-xl border border-slate-100 px-2 py-2 text-xs text-slate-700"
                 >
-                  <span className="truncate">{item.name}</span>
-                  <span className="ml-2 text-slate-500">
-                    ×{item.quantity}{item.weight ? ` (${item.weight} г)` : ""}
-                  </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate">{item.name}</span>
+                    <span className="ml-2 text-slate-500">
+                      ×{item.quantity}{item.final_weight_grams ? ` (${item.final_weight_grams / 1000} кг)` : item.weight ? ` (${item.weight} г)` : ""}
+                    </span>
+                  </div>
+                  {item.requires_final_weight ? (
+                    <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        inputMode="decimal"
+                        placeholder="Вес, кг"
+                        className="w-full rounded-xl border border-slate-200 px-2 py-1.5 text-[11px]"
+                        value={weightInputs[item.id] ?? ""}
+                        onChange={(e) =>
+                          setWeightInputs((prev) => ({ ...prev, [item.id]: e.target.value }))
+                        }
+                      />
+                      <button
+                        type="button"
+                        disabled={weightSavingId === item.id}
+                        className="rounded-xl bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60"
+                        onClick={async () => {
+                          const raw = (weightInputs[item.id] ?? "").trim().replace(",", ".");
+                          const kg = raw ? Number(raw) : NaN;
+                          if (!Number.isFinite(kg) || kg <= 0) {
+                            alert("Введите вес в кг, например 7.4");
+                            return;
+                          }
+                          try {
+                            setWeightSavingId(item.id);
+                            const updated = await patchOrderPositionFinalWeight(item.id, Math.round(kg * 1000));
+                            const positions = await fetchOrderPositions(order.id);
+                            setItems(positions);
+                            onPaidUpdated(updated);
+                          } catch {
+                            alert("Не удалось сохранить вес");
+                          } finally {
+                            setWeightSavingId(null);
+                          }
+                        }}
+                      >
+                        Сохранить
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               ))
             )}

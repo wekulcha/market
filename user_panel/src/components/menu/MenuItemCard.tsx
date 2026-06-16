@@ -43,7 +43,14 @@ export function MenuItemCard({ meal }: MenuItemCardProps) {
             className="flex flex-col items-end justify-between shrink-0 w-[100px]"
             onClick={(e) => e.stopPropagation()}
           >
-            <span className="text-sm font-bold text-slate-900">{meal.price} ₽</span>
+            <span className="text-sm font-bold text-slate-900">
+              {meal.price} ₽{meal.requires_final_weight ? '/кг' : ''}
+            </span>
+            {meal.requires_final_weight && (
+              <span className="text-[10px] text-amber-600 text-right leading-tight">
+                итог после взвешивания
+              </span>
+            )}
             {quantity === 0 ? (
               <button
                 type="button"

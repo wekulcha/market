@@ -48,6 +48,9 @@ function formatPrintedDate(iso: string): string {
 }
 
 function formatItemQuantity(item: AdminOrderItem): string {
+  if (item.final_weight_grams) {
+    return `×${item.quantity} (${item.final_weight_grams / 1000} кг)`;
+  }
   return `×${item.quantity}${item.weight ? ` (${item.weight} г)` : ""}`;
 }
 

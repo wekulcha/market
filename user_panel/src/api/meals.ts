@@ -12,6 +12,7 @@ interface MealDto {
   imageLink: string | null;
   category: string | null;
   price: number;
+  requiresFinalWeight?: boolean | null;
   available: boolean;
 }
 
@@ -26,6 +27,7 @@ function toMeal(d: MealDto): Meal {
     image_link: d.imageLink ?? null,
     category: d.category ?? 'OTHER',
     price: Number(d.price),
+    requires_final_weight: d.requiresFinalWeight ?? false,
     is_available: d.available ?? true,
   };
 }

@@ -40,7 +40,7 @@ def _to_dto(m: Meal) -> MealDto:
         id=m.id, restaurantId=m.restaurant_id, name=m.name,
         description=m.description, weight=m.weight, calorie=m.calorie,
         imageLink=m.image_link, category=m.category,
-        price=m.price, available=m.is_available,
+        price=m.price, requiresFinalWeight=m.requires_final_weight, available=m.is_available,
     )
 
 
@@ -118,7 +118,9 @@ async def create_meal(
         description=dto.description, weight=dto.weight, calorie=dto.calorie,
         image_link=(dto.imageLink or "").strip() or None,
         category=category_value,
-        price=dto.price, is_available=dto.available if dto.available is not None else True,
+        price=dto.price,
+        requires_final_weight=bool(dto.requiresFinalWeight),
+        is_available=dto.available if dto.available is not None else True,
     )
     db.add(meal)
     try:
@@ -157,6 +159,8 @@ async def update_meal(
         existing.category = MealCategory(dto.category).value
     if dto.price is not None:
         existing.price = dto.price
+    if dto.requiresFinalWeight is not None:
+        existing.requires_final_weight = dto.requiresFinalWeight
     if dto.available is not None:
         existing.is_available = dto.available
     if dto.restaurantId is not None:

@@ -34,12 +34,14 @@ export function CartItemRow({ item }: CartItemRowProps) {
 
         {/* Price and weight */}
         <p className="text-xs text-slate-500 mb-1">
-          {item.meal.price} ₽{item.meal.weight ? ` · ${item.meal.weight} г` : ''}
+          {item.meal.price} ₽{item.meal.requires_final_weight ? '/кг' : ''}{item.meal.weight ? ` · ${item.meal.weight} г` : ''}
         </p>
 
         {/* Position total */}
         <p className="text-xs text-slate-700 font-medium">
-          Сумма: {positionTotal.toFixed(0)} ₽
+          {item.meal.requires_final_weight
+            ? `Ориентир: ${positionTotal.toFixed(0)} ₽, итог после взвешивания`
+            : `Сумма: ${positionTotal.toFixed(0)} ₽`}
         </p>
       </div>
 
@@ -62,4 +64,3 @@ export function CartItemRow({ item }: CartItemRowProps) {
     </div>
   );
 }
-

@@ -35,6 +35,7 @@ interface MealDto {
   imageLink: string | null;
   category: string | null;
   price: number;
+  requiresFinalWeight?: boolean | null;
   available: boolean;
 }
 
@@ -49,6 +50,7 @@ function toMeal(d: MealDto): Meal {
     image_link: d.imageLink ?? null,
     category: d.category ?? "",
     price: Number(d.price),
+    requires_final_weight: d.requiresFinalWeight ?? false,
     is_available: d.available ?? true,
   };
 }
@@ -99,6 +101,7 @@ export async function createAdminMeal(
     imageLink: payload.image_link?.trim() || null,
     category: payload.category,
     price: payload.price,
+    requiresFinalWeight: payload.requires_final_weight ?? false,
     available: payload.is_available ?? true,
   };
   const resp = await fetch(`${BASE_URL}/meals`, {
@@ -126,6 +129,7 @@ export async function updateAdminMeal(
       | "image_link"
       | "category"
       | "price"
+      | "requires_final_weight"
       | "is_available"
     >
   >
@@ -140,6 +144,7 @@ export async function updateAdminMeal(
     imageLink: updates.image_link === undefined ? meal.image_link : updates.image_link?.trim() || null,
     category: updates.category ?? meal.category,
     price: updates.price ?? meal.price,
+    requiresFinalWeight: updates.requires_final_weight ?? meal.requires_final_weight,
     available: updates.is_available ?? meal.is_available,
   };
   const resp = await fetch(`${BASE_URL}/meals/${mealId}`, {

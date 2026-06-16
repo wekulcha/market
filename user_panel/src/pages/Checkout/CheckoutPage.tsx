@@ -43,6 +43,7 @@ export function CheckoutPage() {
   const serviceFee = 0;
   const total = itemsTotal + deliveryFee + serviceFee;
   const missingToMinimum = Math.max(0, MARKET_MIN_ORDER_TOTAL - itemsTotal);
+  const hasWeightedItems = items.some((item) => item.meal.requires_final_weight);
   const deliveryText = deliveryPromiseText(selectedRestaurant?.ordersAcceptTo);
   const deliveryHint = deliveryCutoffHint(selectedRestaurant?.ordersAcceptTo);
 
@@ -435,6 +436,11 @@ export function CheckoutPage() {
           {missingToMinimum > 0 && (
             <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
               Добавьте товаров ещё на {missingToMinimum.toFixed(0)} ₽.
+            </div>
+          )}
+          {hasWeightedItems && (
+            <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              В заказе есть товар с ценой за кг. Сумма ориентировочная и обновится после взвешивания.
             </div>
           )}
           <div className="flex justify-between text-slate-500">

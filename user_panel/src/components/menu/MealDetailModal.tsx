@@ -45,7 +45,16 @@ export function MealDetailModal({ meal, onClose }: MealDetailModalProps) {
             {meal.weight != null && <span>{meal.weight} г</span>}
             {meal.calorie != null && <span>{meal.calorie} ккал</span>}
           </div>
-          <div className="text-xl font-bold text-slate-900">{meal.price} ₽</div>
+          <div>
+            <div className="text-xl font-bold text-slate-900">
+              {meal.price} ₽{meal.requires_final_weight ? '/кг' : ''}
+            </div>
+            {meal.requires_final_weight && (
+              <div className="text-xs text-amber-700">
+                Итоговая сумма обновится после взвешивания.
+              </div>
+            )}
+          </div>
           <div className="flex justify-end pt-2">
             {quantity === 0 ? (
               <button

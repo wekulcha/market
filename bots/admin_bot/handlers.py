@@ -92,7 +92,12 @@ def _apply_status_change_meta(
         if ln.startswith("💬 "):
             comment_line = ln
             continue
-        if "Статус ещё не меняли" in ln or "Статус изменил:" in ln or "Выберите статус ниже" in ln:
+        if (
+            "Статус ещё не меняли" in ln
+            or "Статус изменил:" in ln
+            or "Обновил:" in ln
+            or "Выберите статус ниже" in ln
+        ):
             continue
 
     out: list[str] = [order_line, "━━━━━━━━━━━━━━"]

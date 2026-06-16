@@ -15,6 +15,7 @@ class MealDto(BaseModel):
     imageLink: str | None = None
     category: str | None = None
     price: Decimal | None = None
+    requiresFinalWeight: bool | None = None
     available: bool | None = None
 
 

@@ -51,6 +51,7 @@ const CreateMealModal: React.FC<CreateMealModalProps> = ({
     image_link: "",
     category: fixedCategory,
     price: 0,
+    requires_final_weight: false,
     is_available: true,
   });
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -66,6 +67,7 @@ const CreateMealModal: React.FC<CreateMealModalProps> = ({
       image_link: initialMeal.image_link ?? "",
       category: initialMeal.category || fixedCategory,
       price: initialMeal.price,
+      requires_final_weight: initialMeal.requires_final_weight,
       is_available: initialMeal.is_available,
     });
   }, [mode, initialMeal, fixedCategory]);
@@ -136,7 +138,9 @@ const CreateMealModal: React.FC<CreateMealModalProps> = ({
 
         {/* Price */}
         <div className="space-y-1">
-          <label className="text-[11px] text-slate-600">Цена *</label>
+          <label className="text-[11px] text-slate-600">
+            {form.requires_final_weight ? "Цена за 1 кг *" : "Цена *"}
+          </label>
           <input
             type="number"
             className="w-full rounded-xl border border-slate-200 px-2 py-1.5 text-[11px]"
@@ -149,6 +153,21 @@ const CreateMealModal: React.FC<CreateMealModalProps> = ({
             step="0.01"
           />
         </div>
+
+        <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 rounded border-slate-300"
+            checked={Boolean(form.requires_final_weight)}
+            onChange={(e) => handleChange("requires_final_weight", e.target.checked)}
+          />
+          <span className="text-[11px] text-slate-700">
+            <span className="font-semibold">Цена за кг, нужен финальный вес</span>
+            <span className="block text-[10px] text-slate-500">
+              Для арбуза, дыни и похожих товаров: при заказе сумма примерная, после взвешивания сотрудник введет вес.
+            </span>
+          </span>
+        </label>
 
         {/* Image upload */}
         <div className="space-y-1">
@@ -613,7 +632,7 @@ export const AdminMenuTab: React.FC<AdminMenuTabProps> = ({
                     {meal.name}
                   </div>
                   <div className="text-[10px] text-slate-500">
-                    {mealCategoryLabel(meal.category)} · {Math.round(meal.price)} ₽
+                    {mealCategoryLabel(meal.category)} · {Math.round(meal.price)} ₽{meal.requires_final_weight ? "/кг" : ""}
                   </div>
                   {meal.description ? (
                     <div className="text-[10px] text-slate-400 line-clamp-2">

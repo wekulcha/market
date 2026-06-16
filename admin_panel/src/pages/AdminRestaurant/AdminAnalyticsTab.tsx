@@ -205,6 +205,7 @@ interface TodayTotalItem {
   mealId: number;
   name: string;
   weight: number | null;
+  finalWeightGrams: number;
   quantity: number;
   orderIds: number[];
 }
@@ -268,10 +269,12 @@ export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
                   mealId: position.meal_id,
                   name: position.name,
                   weight: position.weight,
+                  finalWeightGrams: 0,
                   quantity: 0,
                   orderIds: [],
                 };
                 group.quantity += position.quantity;
+                group.finalWeightGrams += position.final_weight_grams ?? 0;
                 if (!group.orderIds.includes(order.id)) {
                   group.orderIds.push(order.id);
                 }
@@ -494,6 +497,7 @@ export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
                       {item.name}{item.weight ? ` (${item.weight} г)` : ""}
                     </span>
                     <span className="block text-[10px] text-slate-500">
+                      {item.finalWeightGrams > 0 ? `Вес: ${item.finalWeightGrams / 1000} кг · ` : ""}
                       Заказы: {item.orderIds.map((id) => `№${id}`).join(", ")}
                     </span>
                   </span>

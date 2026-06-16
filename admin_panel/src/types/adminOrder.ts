@@ -8,9 +8,13 @@ export type AdminOrderStatusCode =
   | "CANCELLED";
 
 export interface AdminOrderItem {
+  id: number;
   meal_id: number;
   name: string;
   weight: number | null;
+  requires_final_weight: boolean;
+  final_weight_grams: number | null;
+  total_price: number;
   quantity: number;
 }
 

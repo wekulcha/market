@@ -35,6 +35,7 @@ class Meal(Base):
     image_link: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     category: Mapped[str | None] = mapped_column(MealCategoryColumn(), nullable=True)
     price: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
+    requires_final_weight: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     restaurant = relationship("Restaurant", lazy="joined")

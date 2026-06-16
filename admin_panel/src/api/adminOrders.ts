@@ -1,6 +1,6 @@
 import { BASE_URL } from "./baseUrl";
 import { buildAdminApiJsonHeaders } from "../telegram/initTelegram";
-import { AdminOrder, AdminOrderStatusCode } from "../types/adminOrder";
+import { AdminOrder, AdminOrderItem, AdminOrderStatusCode } from "../types/adminOrder";
 
 export type AdminOrderFilterStatus =
   | "ALL"
@@ -82,6 +82,22 @@ export async function patchOrderPaid(orderId: number, isPaid: boolean): Promise<
   return toAdminOrder(d);
 }
 
+export async function patchOrderPositionFinalWeight(
+  positionId: number,
+  finalWeightGrams: number | null
+): Promise<AdminOrder> {
+  const resp = await fetch(`${BASE_URL}/order-positions/${positionId}/final-weight`, {
+    method: "PATCH",
+    headers: buildAdminApiJsonHeaders(),
+    body: JSON.stringify({ finalWeightGrams }),
+  });
+  if (!resp.ok) {
+    throw new Error(`Failed to patch final weight: ${resp.status}`);
+  }
+  const d = (await resp.json()) as OrderDto;
+  return toAdminOrder(d);
+}
+
 export async function updateAdminOrderStatus(
   orderId: number,
   status: AdminOrderStatusCode,
@@ -117,7 +133,7 @@ export async function updateAdminOrderStatus(
   return toAdminOrder(d);
 }
 
-export async function fetchOrderPositions(orderId: number): Promise<{ meal_id: number; name: string; weight: number | null; quantity: number }[]> {
+export async function fetchOrderPositions(orderId: number): Promise<AdminOrderItem[]> {
   const resp = await fetch(`${BASE_URL}/order-positions?orderId=${orderId}`, {
     headers: buildAdminApiJsonHeaders(),
   });
@@ -127,10 +143,12 @@ export async function fetchOrderPositions(orderId: number): Promise<{ meal_id: n
     mealId: number;
     mealName?: string | null;
     mealWeight?: number | null;
+    mealRequiresFinalWeight?: boolean | null;
     orderId: number;
     quantity: number;
     unitPrice: number;
     totalPrice: number;
+    finalWeightGrams?: number | null;
   }[];
   const mealIds = [...new Set(positions.map((p) => p.mealId))];
   const mealMap = new Map<number, { name: string; weight: number | null }>();
@@ -150,10 +168,14 @@ export async function fetchOrderPositions(orderId: number): Promise<{ meal_id: n
       }
     })
   );
-  const result: { meal_id: number; name: string; weight: number | null; quantity: number }[] = positions.map((p) => ({
+  const result: AdminOrderItem[] = positions.map((p) => ({
+    id: p.id,
     meal_id: p.mealId,
     name: mealMap.get(p.mealId)?.name ?? `#${p.mealId}`,
     weight: mealMap.get(p.mealId)?.weight ?? null,
+    requires_final_weight: p.mealRequiresFinalWeight ?? false,
+    final_weight_grams: p.finalWeightGrams ?? null,
+    total_price: Number(p.totalPrice ?? 0),
     quantity: p.quantity,
   }));
   return result;

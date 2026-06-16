@@ -53,10 +53,31 @@ def _order_type_ru(ot: object) -> str:
 
 
 def _position_name_qty(p: OrderPosition, *, include_weight: bool) -> str:
-    weight = p.meal.weight if p.meal else None
-    suffix = f" ({weight} г)" if include_weight and weight else ""
+    final_weight = p.final_weight_grams
+    catalog_weight = p.meal.weight if p.meal else None
+    if include_weight and final_weight:
+        weight_text = f"{(Decimal(final_weight) / Decimal('1000')).normalize()} кг"
+        suffix = f" ({weight_text})"
+    elif include_weight and catalog_weight:
+        suffix = f" ({catalog_weight} г)"
+    else:
+        suffix = ""
     meal_name = p.meal.name if p.meal else f"Товар #{p.meal_id}"
     return f"{_esc(meal_name)} × {p.quantity}{suffix}"
+
+
+def _position_user_price_text(p: OrderPosition) -> str:
+    if p.meal and p.meal.requires_final_weight and p.final_weight_grams is None:
+        return f"{p.unit_price} ₽/кг, итог изменится после взвешивания"
+    return f"{p.total_price} ₽"
+
+
+def _position_admin_price_hint(p: OrderPosition) -> str:
+    if not p.meal or not p.meal.requires_final_weight:
+        return ""
+    if p.final_weight_grams is None:
+        return f" · {p.unit_price} ₽/кг · нужен финальный вес"
+    return f" · {p.unit_price} ₽/кг · итог {p.total_price} ₽"
 
 
 def _compact_place_text(v: str | None) -> str:
@@ -152,7 +173,7 @@ def _format_user_order_block(
         "<b>Состав:</b>",
     ]
     for p in lines:
-        parts.append(f"• {_position_name_qty(p, include_weight=False)} — {p.total_price} ₽")
+        parts.append(f"• {_position_name_qty(p, include_weight=False)} — {_position_user_price_text(p)}")
     if order.delivery_address:
         parts.append(f"\n🚚 Адрес: {_esc(order.delivery_address)}")
     if order.table_number:
@@ -193,7 +214,7 @@ def _format_admin_new_order(order: Order, lines: list[OrderPosition]) -> str:
         "<b>Позиции:</b>",
     ]
     for p in lines:
-        parts.append(f"• {_position_name_qty(p, include_weight=True)}")
+        parts.append(f"• {_position_name_qty(p, include_weight=True)}{_position_admin_price_hint(p)}")
     if order.comment:
         parts.append(f"\n💬 Комментарий: {_esc(order.comment)}")
     parts.append("\n<i>Статус ещё не меняли</i>")
@@ -205,7 +226,7 @@ def _format_admin_order_state(order: Order, lines: list[OrderPosition], actor: s
     if actor:
         return html_text.replace(
             "\n<i>Статус ещё не меняли</i>",
-            f"\n<i>Статус изменил: {_esc(actor)}</i>",
+            f"\n<i>Обновил: {_esc(actor)}</i>",
         )
     if _enum_key(order.status) != "CREATED" or getattr(order, "is_paid", False):
         return html_text.replace(

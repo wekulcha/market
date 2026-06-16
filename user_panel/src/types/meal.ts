@@ -8,5 +8,6 @@ export interface Meal {
   image_link: string | null;
   category: string | null;
   price: number;
+  requires_final_weight: boolean;
   is_available: boolean;
 }
