@@ -156,7 +156,7 @@ function OrderDetailBody({ d }: { d: AdminOrderDetail }) {
           {d.positions.map((p, i) => (
             <li key={i} className="flex justify-between gap-2">
               <span className="text-slate-800">
-                {p.mealName} ×{p.quantity}
+                {p.mealName} ×{p.quantity}{p.mealWeight ? ` (${p.mealWeight} г)` : ""}
               </span>
               <span className="text-slate-600 shrink-0">{formatMoney(p.totalPrice)}</span>
             </li>

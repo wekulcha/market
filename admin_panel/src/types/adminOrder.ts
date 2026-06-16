@@ -10,6 +10,7 @@ export type AdminOrderStatusCode =
 export interface AdminOrderItem {
   meal_id: number;
   name: string;
+  weight: number | null;
   quantity: number;
 }
 

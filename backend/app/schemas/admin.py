@@ -110,6 +110,7 @@ class AdminOrderSummaryDto(BaseModel):
 
 class AdminOrderPositionLineDto(BaseModel):
     mealName: str
+    mealWeight: int | None = None
     quantity: int
     unitPrice: Decimal
     totalPrice: Decimal

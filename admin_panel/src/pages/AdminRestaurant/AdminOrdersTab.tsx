@@ -332,7 +332,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
   onPaidUpdated,
   onClose,
 }) => {
-  const [items, setItems] = useState<{ meal_id: number; name: string; quantity: number }[]>([]);
+  const [items, setItems] = useState<AdminOrderItem[]>([]);
   const [userInfo, setUserInfo] = useState<{ username: string; phone: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPaidUpdating, setIsPaidUpdating] = useState(false);
@@ -444,7 +444,9 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                   className="flex items-center justify-between text-xs text-slate-700"
                 >
                   <span className="truncate">{item.name}</span>
-                  <span className="ml-2 text-slate-500">×{item.quantity}</span>
+                  <span className="ml-2 text-slate-500">
+                    ×{item.quantity}{item.weight ? ` (${item.weight} г)` : ""}
+                  </span>
                 </div>
               ))
             )}

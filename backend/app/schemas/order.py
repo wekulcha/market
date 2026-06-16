@@ -62,6 +62,7 @@ class OrderReviewPatchDto(BaseModel):
 
 class DailyOrderPositionSummaryDto(BaseModel):
     mealName: str
+    mealWeight: int | None = None
     quantity: int
     totalPrice: Decimal
 

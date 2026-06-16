@@ -204,6 +204,7 @@ type AnalyticsView = "dashboard" | "today_orders" | "today_totals";
 interface TodayTotalItem {
   mealId: number;
   name: string;
+  weight: number | null;
   quantity: number;
   orderIds: number[];
 }
@@ -266,6 +267,7 @@ export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
                 const group = positionGroups.get(position.meal_id) ?? {
                   mealId: position.meal_id,
                   name: position.name,
+                  weight: position.weight,
                   quantity: 0,
                   orderIds: [],
                 };
@@ -489,7 +491,7 @@ export const AdminAnalyticsTab: React.FC<AdminAnalyticsTabProps> = ({
                   />
                   <span className="min-w-0">
                     <span className="block text-xs font-semibold text-slate-900 truncate">
-                      {item.name}
+                      {item.name}{item.weight ? ` (${item.weight} г)` : ""}
                     </span>
                     <span className="block text-[10px] text-slate-500">
                       Заказы: {item.orderIds.map((id) => `№${id}`).join(", ")}
@@ -543,7 +545,9 @@ function TodayOrderDetailBody({
   onClose: () => void;
   onTogglePaid: () => void | Promise<void>;
 }) {
-  const [items, setItems] = useState<{ meal_id: number; name: string; quantity: number }[]>([]);
+  const [items, setItems] = useState<
+    { meal_id: number; name: string; weight: number | null; quantity: number }[]
+  >([]);
   const [userInfo, setUserInfo] = useState<{ username: string; phone: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -616,7 +620,9 @@ function TodayOrderDetailBody({
             items.map((item) => (
               <div key={`${item.meal_id}-${item.quantity}`} className="flex justify-between text-xs text-slate-700">
                 <span className="truncate">{item.name}</span>
-                <span className="text-slate-500">×{item.quantity}</span>
+                <span className="text-slate-500">
+                  ×{item.quantity}{item.weight ? ` (${item.weight} г)` : ""}
+                </span>
               </div>
             ))
           )}

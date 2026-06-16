@@ -27,15 +27,24 @@ def _money(value: Any) -> str:
     return f"{text} ₽"
 
 
+def _position_label(position: dict[str, Any]) -> str:
+    meal_name = html.escape(str(position.get("mealName") or "Без названия"))
+    weight = position.get("mealWeight")
+    try:
+        weight_value = int(weight) if weight is not None else 0
+    except (TypeError, ValueError):
+        weight_value = 0
+    return f"{meal_name} ({weight_value} г)" if weight_value > 0 else meal_name
+
+
 def _positions_lines(section: dict[str, Any]) -> list[str]:
     positions = section.get("positions") or []
     if not positions:
         return ["<i>Общие позиции: пока нет.</i>"]
     lines = ["<b>Общие позиции</b> <i>(без отменённых)</i>"]
     for index, position in enumerate(positions, start=1):
-        meal_name = html.escape(str(position.get("mealName") or "Без названия"))
         lines.append(
-            f"{index}. {meal_name} — "
+            f"{index}. {_position_label(position)} — "
             f"<b>×{position.get('quantity', 0)}</b>"
             f" · {_money(position.get('totalPrice'))}"
         )
@@ -315,7 +324,7 @@ def build_today_report_pdf(summary: dict[str, Any]) -> bytes | None:
                 position_rows.append(
                     [
                         str(pos_index),
-                        Paragraph(html.escape(str(position.get("mealName", "Без названия"))), small_style),
+                        Paragraph(_position_label(position), small_style),
                         str(position.get("quantity", 0)),
                         _money(position.get("totalPrice")),
                     ]

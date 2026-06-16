@@ -444,6 +444,7 @@ async def admin_order_detail(
     positions = [
         AdminOrderPositionLineDto(
             mealName=p.meal.name,
+            mealWeight=p.meal.weight,
             quantity=p.quantity,
             unitPrice=p.unit_price,
             totalPrice=p.total_price,

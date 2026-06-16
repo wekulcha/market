@@ -160,7 +160,7 @@ def _empty_type_summary(order_type: str) -> dict[str, object]:
         "deliveryFeeTotal": Decimal("0"),
         "serviceFeeTotal": Decimal("0"),
         "courierAssignedOrdersCount": 0,
-        "positions": defaultdict(lambda: {"quantity": 0, "totalPrice": Decimal("0")}),
+        "positions": defaultdict(lambda: {"mealName": "", "mealWeight": None, "quantity": 0, "totalPrice": Decimal("0")}),
     }
 
 
@@ -171,7 +171,8 @@ def _build_type_summary(data: dict[str, object]) -> DailyOrderTypeSummaryDto:
     assert isinstance(positions_raw, defaultdict)
     positions = [
         DailyOrderPositionSummaryDto(
-            mealName=meal_name,
+            mealName=str(values["mealName"] or meal_name),
+            mealWeight=values["mealWeight"] if values["mealWeight"] is not None else None,
             quantity=int(values["quantity"]),
             totalPrice=Decimal(values["totalPrice"]),
         )
@@ -393,7 +394,11 @@ async def get_today_summary(
         assert isinstance(positions, defaultdict)
         for position in positions_by_order_id.get(order.id, []):
             meal_name = position.meal.name if position.meal else f"Блюдо #{position.meal_id}"
-            entry = positions[meal_name]
+            meal_weight = position.meal.weight if position.meal else None
+            position_key = f"{meal_name}|{meal_weight or ''}"
+            entry = positions[position_key]
+            entry["mealName"] = meal_name
+            entry["mealWeight"] = meal_weight
             entry["quantity"] += position.quantity
             entry["totalPrice"] += position.total_price
 

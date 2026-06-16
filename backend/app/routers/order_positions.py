@@ -22,6 +22,8 @@ router = APIRouter(prefix="/api/v1/order-positions", tags=["order-positions"])
 def _to_dto(p: OrderPosition) -> OrderPositionDto:
     return OrderPositionDto(
         id=p.id, mealId=p.meal_id, orderId=p.order_id,
+        mealName=p.meal.name if p.meal else None,
+        mealWeight=p.meal.weight if p.meal else None,
         quantity=p.quantity, unitPrice=p.unit_price, totalPrice=p.total_price,
     )
 

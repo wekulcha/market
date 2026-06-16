@@ -47,6 +47,10 @@ function formatPrintedDate(iso: string): string {
   return `${day}.${month}.${year} ${hh}:${mm}`;
 }
 
+function formatItemQuantity(item: AdminOrderItem): string {
+  return `×${item.quantity}${item.weight ? ` (${item.weight} г)` : ""}`;
+}
+
 function toBase64Url(value: string): string {
   const encoded = btoa(unescape(encodeURIComponent(value)));
   return encoded.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -97,7 +101,7 @@ export function renderKitchenTicketDocument(
             (item) => `
               <div class="item-row">
                 <div class="item-name">${escapeHtml(item.name)}</div>
-                <div class="item-qty">×${item.quantity}</div>
+                <div class="item-qty">${escapeHtml(formatItemQuantity(item))}</div>
               </div>
             `
           )
