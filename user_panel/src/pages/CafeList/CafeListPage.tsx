@@ -7,6 +7,8 @@ import { useAuth } from '../../context/AuthContext';
 import { logUserActivity } from '../../api/activity';
 import { fetchMarketRestaurant } from '../../api/restaurants';
 import { fetchMealsByRestaurant } from '../../api/meals';
+import { fetchCustomerReviews } from '../../api/reviews';
+import { ReviewSummaryCard } from '../../components/reviews/ReviewSummaryCard';
 import { Header } from '../../layout/Header';
 import { MiniAppShell } from '../../layout/MiniAppShell';
 import { PRODUCT_CATEGORIES, type ProductCategory } from '../../utils/productCategories';
@@ -45,6 +47,11 @@ export function CafeListPage() {
     queryKey: ['market-restaurant-meals', marketRestaurant?.id],
     queryFn: () => fetchMealsByRestaurant(marketRestaurant!.id),
     enabled: Boolean(marketRestaurant?.id),
+  });
+  const { data: reviewSummary, isLoading: reviewsLoading } = useQuery({
+    queryKey: ['customer-reviews', 3],
+    queryFn: () => fetchCustomerReviews(3),
+    staleTime: 5 * 60 * 1000,
   });
 
   useEffect(() => {
@@ -108,6 +115,12 @@ export function CafeListPage() {
             />
           </div>
         )}
+
+        <ReviewSummaryCard
+          summary={reviewSummary}
+          loading={reviewsLoading}
+          onClick={() => navigate('/reviews')}
+        />
 
         <section className="space-y-3">
           <div className="px-1">

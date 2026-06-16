@@ -10,6 +10,7 @@ const ProfilePage = lazy(() => import('./pages/Profile/ProfilePage').then((m) =>
 const OrderHistoryPage = lazy(() =>
   import('./pages/OrderHistory/OrderHistoryPage').then((m) => ({ default: m.OrderHistoryPage }))
 );
+const ReviewsPage = lazy(() => import('./pages/Reviews/ReviewsPage').then((m) => ({ default: m.ReviewsPage })));
 
 const PageFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-slate-100">
@@ -27,4 +28,5 @@ export const router = createBrowserRouter([
   { path: '/checkout', element: <Suspense fallback={<PageFallback />}><CheckoutPage /></Suspense> },
   { path: '/profile', element: <Suspense fallback={<PageFallback />}><ProfilePage /></Suspense> },
   { path: '/orders/history', element: <Suspense fallback={<PageFallback />}><OrderHistoryPage /></Suspense> },
+  { path: '/reviews', element: <Suspense fallback={<PageFallback />}><ReviewsPage /></Suspense> },
 ]);

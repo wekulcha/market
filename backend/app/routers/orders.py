@@ -4,8 +4,8 @@ from collections import defaultdict
 from datetime import datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
-from sqlalchemy import and_, or_, select
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -28,6 +28,8 @@ from app.schemas.order import (
     OrderPaidPatchDto,
     OrderReviewPatchDto,
     OrderStatusPatchDto,
+    PublicOrderReviewDto,
+    PublicOrderReviewsDto,
 )
 from app.deps.superadmin import assert_superadmin
 from app.services import staff_access
@@ -67,6 +69,35 @@ def _to_dto(order: Order) -> OrderDto:
         reviewRating=order.review_rating,
         reviewText=order.review_text,
         reviewCreatedAt=order.review_created_at,
+    )
+
+
+def _public_review_name(user: User | None) -> str:
+    raw = (user.username if user else "") or ""
+    cleaned = raw.strip().lstrip("@").strip()
+    if not cleaned or cleaned.startswith("tg_"):
+        return "Клиент"
+    return cleaned[:40]
+
+
+def _public_review_phone(user: User | None) -> str:
+    raw = (user.phone if user else "") or ""
+    digits = "".join(c for c in raw if c.isdigit())
+    if len(digits) >= 11 and digits.startswith("7"):
+        return f"+7***{digits[-4:]}"
+    if len(digits) >= 4:
+        return f"***{digits[-4:]}"
+    return "номер скрыт"
+
+
+def _to_public_review_dto(order: Order) -> PublicOrderReviewDto:
+    return PublicOrderReviewDto(
+        id=int(order.id),
+        displayName=_public_review_name(order.user),
+        maskedPhone=_public_review_phone(order.user),
+        rating=int(order.review_rating or 0),
+        text=order.review_text,
+        createdAt=order.review_created_at or order.updated_at or order.created_at,
     )
 
 
@@ -441,6 +472,34 @@ async def get_today_summary(
         timezone="Europe/Moscow",
         generatedAt=datetime.now(),
         restaurants=restaurant_summaries,
+    )
+
+
+@router.get("/reviews", response_model=PublicOrderReviewsDto)
+async def get_public_reviews(
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    reviews_filter = Order.review_rating.is_not(None)
+
+    summary_result = await db.execute(
+        select(func.count(Order.id), func.avg(Order.review_rating)).where(reviews_filter)
+    )
+    reviews_count, average_rating = summary_result.one()
+
+    reviews_result = await db.execute(
+        select(Order)
+        .options(joinedload(Order.user))
+        .where(reviews_filter)
+        .order_by(Order.review_created_at.desc(), Order.created_at.desc(), Order.id.desc())
+        .limit(limit)
+    )
+    reviews = [_to_public_review_dto(order) for order in reviews_result.unique().scalars().all()]
+
+    return PublicOrderReviewsDto(
+        reviewsCount=int(reviews_count or 0),
+        averageRating=float(average_rating) if average_rating is not None else None,
+        reviews=reviews,
     )
 
 

@@ -60,6 +60,21 @@ class OrderReviewPatchDto(BaseModel):
     text: str | None = None
 
 
+class PublicOrderReviewDto(BaseModel):
+    id: int
+    displayName: str
+    maskedPhone: str
+    rating: int
+    text: str | None = None
+    createdAt: datetime | None = None
+
+
+class PublicOrderReviewsDto(BaseModel):
+    reviewsCount: int
+    averageRating: float | None = None
+    reviews: list[PublicOrderReviewDto] = []
+
+
 class DailyOrderPositionSummaryDto(BaseModel):
     mealName: str
     mealWeight: int | None = None

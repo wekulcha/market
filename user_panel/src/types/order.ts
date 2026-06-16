@@ -50,4 +50,7 @@ export interface UserOrder {
   service_fee: number | null;
   total: number | null;
   is_paid?: boolean | null;
+  review_rating?: number | null;
+  review_text?: string | null;
+  review_created_at?: string | null;
 }

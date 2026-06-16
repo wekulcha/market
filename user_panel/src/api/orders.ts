@@ -31,6 +31,9 @@ interface OrderDto {
   serviceFee: number | string | null;
   total: number | string | null;
   isPaid?: boolean | null;
+  reviewRating?: number | null;
+  reviewText?: string | null;
+  reviewCreatedAt?: string | null;
 }
 
 function toNumber(value: number | string | null | undefined): number | null {
@@ -57,6 +60,9 @@ function toUserOrder(dto: OrderDto): UserOrder {
     service_fee: toNumber(dto.serviceFee),
     total: toNumber(dto.total),
     is_paid: dto.isPaid ?? null,
+    review_rating: dto.reviewRating ?? null,
+    review_text: dto.reviewText ?? null,
+    review_created_at: dto.reviewCreatedAt ?? null,
   };
 }
 

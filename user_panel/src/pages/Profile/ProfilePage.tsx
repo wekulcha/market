@@ -372,13 +372,21 @@ export function ProfilePage() {
         </section>
 
         {currentUser && (
-          <section className="bg-white rounded-2xl p-3 shadow-sm">
+          <section className="bg-white rounded-2xl p-3 shadow-sm space-y-1">
             <button
               type="button"
-              className="w-full flex items-center justify-between py-1 text-sm text-slate-800 hover:bg-slate-50 rounded-lg px-1 transition-colors"
+              className="w-full flex items-center justify-between py-2 text-sm text-slate-800 hover:bg-slate-50 rounded-lg px-2 transition-colors"
               onClick={() => navigate('/orders/history')}
             >
               <span>История заказов</span>
+              <span className="text-slate-400 text-xs">›</span>
+            </button>
+            <button
+              type="button"
+              className="w-full flex items-center justify-between py-2 text-sm text-slate-800 hover:bg-slate-50 rounded-lg px-2 transition-colors"
+              onClick={() => navigate('/reviews')}
+            >
+              <span>Отзывы клиентов</span>
               <span className="text-slate-400 text-xs">›</span>
             </button>
           </section>
