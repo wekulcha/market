@@ -110,26 +110,25 @@ export async function cancelOrder(orderId: number): Promise<void> {
 
 export async function fetchOrderPositionsForUser(
   orderId: number
-): Promise<{ meal_id: number; name: string; weight: number | null; quantity: number; total_price: number }[]> {
+): Promise<{ meal_id: number; name: string; quantity: number; total_price: number }[]> {
   const resp = await apiFetchJson<
-    { id: number; mealId: number; mealName?: string | null; mealWeight?: number | null; orderId: number; quantity: number; totalPrice: number }[]
+    { id: number; mealId: number; mealName?: string | null; orderId: number; quantity: number; totalPrice: number }[]
   >(`/order-positions?orderId=${orderId}`, {}, { auth: true });
 
   const mealIds = [...new Set(resp.map((p) => p.mealId))];
-  const mealMap = new Map<number, { name: string; weight: number | null }>();
+  const nameMap = new Map<number, string>();
   for (const mid of mealIds) {
     const known = resp.find((p) => p.mealId === mid && p.mealName);
     if (known?.mealName) {
-      mealMap.set(mid, { name: known.mealName, weight: known.mealWeight ?? null });
+      nameMap.set(mid, known.mealName);
       continue;
     }
-    const meal = await apiFetchJson<{ name: string; weight?: number | null }>(`/meals/${mid}`);
-    mealMap.set(mid, { name: meal.name, weight: meal.weight ?? null });
+    const meal = await apiFetchJson<{ name: string }>(`/meals/${mid}`);
+    nameMap.set(mid, meal.name);
   }
   return resp.map((p) => ({
     meal_id: p.mealId,
-    name: mealMap.get(p.mealId)?.name ?? `#${p.mealId}`,
-    weight: mealMap.get(p.mealId)?.weight ?? null,
+    name: nameMap.get(p.mealId) ?? `#${p.mealId}`,
     quantity: p.quantity,
     total_price: Number(p.totalPrice ?? 0),
   }));

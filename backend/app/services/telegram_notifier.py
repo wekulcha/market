@@ -52,9 +52,9 @@ def _order_type_ru(ot: object) -> str:
     return _ORDER_TYPE_RU.get(_enum_key(ot), _enum_key(ot))
 
 
-def _position_name_qty(p: OrderPosition) -> str:
+def _position_name_qty(p: OrderPosition, *, include_weight: bool) -> str:
     weight = p.meal.weight if p.meal else None
-    suffix = f" ({weight} г)" if weight else ""
+    suffix = f" ({weight} г)" if include_weight and weight else ""
     meal_name = p.meal.name if p.meal else f"Товар #{p.meal_id}"
     return f"{_esc(meal_name)} × {p.quantity}{suffix}"
 
@@ -152,7 +152,7 @@ def _format_user_order_block(
         "<b>Состав:</b>",
     ]
     for p in lines:
-        parts.append(f"• {_position_name_qty(p)} — {p.total_price} ₽")
+        parts.append(f"• {_position_name_qty(p, include_weight=False)} — {p.total_price} ₽")
     if order.delivery_address:
         parts.append(f"\n🚚 Адрес: {_esc(order.delivery_address)}")
     if order.table_number:
@@ -193,7 +193,7 @@ def _format_admin_new_order(order: Order, lines: list[OrderPosition]) -> str:
         "<b>Позиции:</b>",
     ]
     for p in lines:
-        parts.append(f"• {_position_name_qty(p)}")
+        parts.append(f"• {_position_name_qty(p, include_weight=True)}")
     if order.comment:
         parts.append(f"\n💬 Комментарий: {_esc(order.comment)}")
     parts.append("\n<i>Статус ещё не меняли</i>")
