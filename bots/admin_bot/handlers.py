@@ -1,8 +1,5 @@
-import hashlib
 import html
-import hmac as _hmac
 import re
-import time
 from decimal import Decimal, InvalidOperation
 from difflib import SequenceMatcher
 from typing import Any
@@ -20,17 +17,10 @@ from aiogram.types import (
 from aiogram.filters import CommandStart
 
 from config import ADMIN_MINI_APP_URL, API_BASE, BOT_TOKEN, INTERNAL_API_SECRET, SUPPORT_LINK
-from keyboards import main_menu_keyboard
+from keyboards import generate_bot_auth_token, main_menu_keyboard
 from order_keyboard import order_status_keyboard
 from reporting import build_today_report_messages, build_today_report_pdf
 
-
-def _generate_bot_auth_token(telegram_id: int, ttl: int = 600) -> str:
-    """Генерирует stateless HMAC-токен для верификации через POST /auth/verify-admin-bot-token."""
-    expiry = int(time.time()) + ttl
-    data = f"{telegram_id}_{expiry}"
-    sig = _hmac.new(BOT_TOKEN.encode(), data.encode(), hashlib.sha256).hexdigest()
-    return f"{telegram_id}_{expiry}_{sig}"
 
 router = Router()
 
@@ -284,7 +274,7 @@ async def cmd_start(message: Message):
         "━━━━━━━━━━━━━━\n"
         "Здесь приходят <b>новые заказы</b> и кнопки смены статуса. "
         "Управление товарами и аналитика — в мини-приложении.",
-        reply_markup=main_menu_keyboard(),
+        reply_markup=main_menu_keyboard(message.from_user.id if message.from_user else None),
     )
 
 
@@ -292,7 +282,7 @@ async def cmd_start(message: Message):
 async def active_orders(message: Message):
     if ADMIN_MINI_APP_URL.startswith("https://"):
         uid = message.from_user.id
-        token = _generate_bot_auth_token(uid) if BOT_TOKEN else None
+        token = generate_bot_auth_token(uid) if BOT_TOKEN else None
         url = f"{ADMIN_MINI_APP_URL}?tg_auth={token}" if token else ADMIN_MINI_APP_URL
         await message.answer(
             "<b>Активные заказы</b>\n"
@@ -327,7 +317,10 @@ async def today_summary(message: Message):
         await message.answer("Не задан токен админ-бота. Отчёт недоступен.")
         return
 
-    token = _generate_bot_auth_token(message.from_user.id)
+    token = generate_bot_auth_token(message.from_user.id)
+    if not token:
+        await message.answer("Не задан токен админ-бота. Отчёт недоступен.")
+        return
     try:
         async with httpx.AsyncClient(timeout=45.0) as client:
             response = await client.get(
