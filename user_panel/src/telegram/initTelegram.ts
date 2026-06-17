@@ -49,22 +49,6 @@ function getEncodedUrlParam(source: string, key: string): string {
   }
 }
 
-export function getBotAuthToken(): string {
-  if (typeof window === 'undefined') return '';
-
-  try {
-    const fromSearch = new URLSearchParams(window.location.search).get('tg_auth');
-    if (fromSearch) return fromSearch;
-
-    const fromHash = new URLSearchParams(window.location.hash.slice(1)).get('tg_auth');
-    if (fromHash) return fromHash;
-  } catch {
-    return '';
-  }
-
-  return '';
-}
-
 export function getTelegramInitData(): string {
   if (typeof window === 'undefined') return '';
 

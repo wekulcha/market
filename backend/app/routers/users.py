@@ -16,8 +16,8 @@ from app.models.user import User
 from app.schemas.user import UserDto, UserRestaurantDto
 from app.services.phone_norm import normalize_phone_to_storage
 from app.services.activity_log import log_user_activity
-from app.services.session_auth import ensure_customer, get_user_from_bearer
-from app.services.telegram_auth import verify_bot_link_token, verify_telegram_init_data
+from app.services.session_auth import get_user_from_bearer
+from app.services.telegram_auth import verify_telegram_init_data
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
@@ -39,31 +39,6 @@ async def _require_admin_user(db: AsyncSession, init_data: str) -> User:
     if not user:
         raise HTTPException(403, "Unknown user")
     return user
-
-
-async def _require_customer_id(
-    db: AsyncSession,
-    init_data: str,
-    bot_auth_token: str | None = None,
-) -> int:
-    settings = get_settings()
-    tid: int | None = None
-    username: str | None = None
-
-    if init_data:
-        tg = verify_telegram_init_data(init_data, settings.user_bot_token)
-        if tg and tg.get("id") is not None:
-            tid = int(tg["id"])
-            username = tg.get("username")
-
-    if tid is None and bot_auth_token:
-        tid = verify_bot_link_token(bot_auth_token, settings.user_bot_token)
-
-    if tid is None:
-        raise HTTPException(401, "Invalid Telegram init data")
-
-    user = await ensure_customer(db, tid, username)
-    return user.id
 
 
 async def _list_restaurants_for_staff(db: AsyncSession, user_id: int) -> list[UserRestaurantDto]:
@@ -117,7 +92,6 @@ async def get_by_id(
     authorization: str | None = Header(None, alias="Authorization"),
     x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
     x_init_data: str | None = Header(None, alias="X-Init-Data"),
-    x_kulcha_bot_auth: str | None = Header(None, alias="X-Market-Bot-Auth"),
 ):
     bearer_user = await get_user_from_bearer(db, authorization)
     if bearer_user:
@@ -140,14 +114,7 @@ async def get_by_id(
         if ex.status_code != 401:
             raise
 
-    db_id = await _require_customer_id(db, init_data, x_kulcha_bot_auth)
-    if db_id != user_id:
-        raise HTTPException(403, "Cannot access another user")
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalars().first()
-    if not user:
-        raise HTTPException(404, "User not found")
-    return _to_dto(user)
+    raise HTTPException(401, "Authorization bearer token is required")
 
 
 @router.get("/{user_id}/my-restaurants")
@@ -245,7 +212,14 @@ async def update_user(
     user_id: int,
     dto: UserDto,
     db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(None, alias="Authorization"),
 ):
+    actor = await get_user_from_bearer(db, authorization)
+    if not actor:
+        raise HTTPException(401, "Authorization bearer token is required")
+    if actor.id != user_id:
+        raise HTTPException(403, "Cannot access another user")
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalars().first()
     if not user:

@@ -34,7 +34,7 @@ from app.schemas.order import (
 from app.deps.superadmin import assert_superadmin
 from app.services import staff_access
 from app.services.activity_log import log_user_activity
-from app.services.session_auth import ensure_customer, get_user_from_bearer
+from app.services.session_auth import get_user_from_bearer
 from app.services.telegram_auth import verify_bot_link_token, verify_telegram_init_data
 from app.services.phone_norm import is_proper_registered_phone, is_russian_order_phone
 from app.services.restaurant_hours import msk_today_utc_naive_bounds, restaurant_accepts_orders_now
@@ -92,40 +92,14 @@ def _to_public_review_dto(order: Order) -> PublicOrderReviewDto:
     )
 
 
-async def _require_legacy_customer_user(
-    db: AsyncSession,
-    init_data: str,
-    bot_auth_token: str | None = None,
-) -> User:
-    settings = get_settings()
-    telegram_id: int | None = None
-    username: str | None = None
-
-    if init_data:
-        tg = verify_telegram_init_data(init_data, settings.user_bot_token)
-        if tg and tg.get("id") is not None:
-            telegram_id = int(tg["id"])
-            username = tg.get("username")
-
-    if telegram_id is None and bot_auth_token:
-        telegram_id = verify_bot_link_token(bot_auth_token, settings.user_bot_token)
-
-    if telegram_id is None:
-        raise HTTPException(401, "Invalid Telegram init data")
-
-    return await ensure_customer(db, telegram_id, username)
-
-
 async def _require_customer_user(
     db: AsyncSession,
     authorization: str | None = None,
-    init_data: str = "",
-    bot_auth_token: str | None = None,
 ) -> User:
     bearer_user = await get_user_from_bearer(db, authorization)
     if bearer_user:
         return bearer_user
-    return await _require_legacy_customer_user(db, init_data, bot_auth_token)
+    raise HTTPException(401, "Authorization bearer token is required")
 
 
 async def _require_admin_user(db: AsyncSession, init_data: str) -> User:
@@ -234,7 +208,6 @@ async def get_all(
     authorization: str | None = Header(None, alias="Authorization"),
     x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
     x_init_data: str | None = Header(None, alias="X-Init-Data"),
-    x_kulcha_bot_auth: str | None = Header(None, alias="X-Market-Bot-Auth"),
     x_kulcha_bot_secret: str | None = Header(None, alias="X-Market-Bot-Secret"),
 ):
     settings = get_settings()
@@ -257,7 +230,7 @@ async def get_all(
             )
             return [_to_dto(order) for order in result.unique().scalars().all()]
 
-        user = await _require_customer_user(db, authorization, init_data, x_kulcha_bot_auth)
+        user = await _require_customer_user(db, authorization)
         if user.id != userId:
             raise HTTPException(403, "Cannot read other users orders")
         result = await db.execute(
@@ -517,7 +490,6 @@ async def get_by_id(
     authorization: str | None = Header(None, alias="Authorization"),
     x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
     x_init_data: str | None = Header(None, alias="X-Init-Data"),
-    x_kulcha_bot_auth: str | None = Header(None, alias="X-Market-Bot-Auth"),
     x_kulcha_internal_secret: str | None = Header(None, alias="X-Market-Internal-Secret"),
 ):
     result = await db.execute(
@@ -540,9 +512,6 @@ async def get_by_id(
         return _to_dto(order)
 
     init_data = (x_telegram_init_data or x_init_data or "").strip()
-    if not init_data and not x_kulcha_bot_auth:
-        raise HTTPException(401, "Telegram init data required")
-
     try:
         admin = await _require_admin_user(db, init_data)
         await staff_access.require_restaurant_staff(db, admin.id, order.restaurant_id)
@@ -551,10 +520,7 @@ async def get_by_id(
         if exc.status_code != 401:
             raise
 
-    customer = await _require_legacy_customer_user(db, init_data, x_kulcha_bot_auth)
-    if order.user_id != customer.id:
-        raise HTTPException(403, "Forbidden")
-    return _to_dto(order)
+    raise HTTPException(401, "Authorization bearer token is required")
 
 
 @router.post("/checkout", status_code=201)
@@ -563,12 +529,8 @@ async def checkout(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(None, alias="Authorization"),
-    x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
-    x_init_data: str | None = Header(None, alias="X-Init-Data"),
-    x_kulcha_bot_auth: str | None = Header(None, alias="X-Market-Bot-Auth"),
 ):
-    init_data = (x_telegram_init_data or x_init_data or "").strip()
-    customer = await _require_customer_user(db, authorization, init_data, x_kulcha_bot_auth)
+    customer = await _require_customer_user(db, authorization)
 
     if not is_proper_registered_phone(customer.phone):
         raise HTTPException(
@@ -737,12 +699,8 @@ async def cancel_my_order(
     order_id: int,
     db: AsyncSession = Depends(get_db),
     authorization: str | None = Header(None, alias="Authorization"),
-    x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
-    x_init_data: str | None = Header(None, alias="X-Init-Data"),
-    x_kulcha_bot_auth: str | None = Header(None, alias="X-Market-Bot-Auth"),
 ):
-    init_data = (x_telegram_init_data or x_init_data or "").strip()
-    customer = await _require_customer_user(db, authorization, init_data, x_kulcha_bot_auth)
+    customer = await _require_customer_user(db, authorization)
     result = await db.execute(select(Order).where(Order.id == order_id))
     order = result.scalars().first()
     if not order:

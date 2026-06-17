@@ -45,18 +45,6 @@ def _to_user_dto(u: User) -> UserDto:
     )
 
 
-def _to_legacy_user_payload(u: User) -> dict[str, object]:
-    return {
-        "id": u.id,
-        "telegramId": u.id,
-        "username": u.username,
-        "phone": u.phone,
-        "email": u.email,
-        "address": u.address,
-        "registeredAt": u.registered_at,
-    }
-
-
 def _to_auth_user_dto(u: User) -> AuthUserDto:
     return AuthUserDto(
         id=u.id,
@@ -176,22 +164,6 @@ async def login_telegram_user(
     return await _issue_auth_session(db, response, user)
 
 
-@router.post("/bot/user", response_model=AuthSessionDto)
-async def login_user_bot_token(
-    body: BotTokenRequest,
-    response: Response,
-    db: AsyncSession = Depends(get_db),
-):
-    """Fallback auth for Telegram clients that open WebApp without initData."""
-    from app.config import get_settings
-
-    settings = get_settings()
-    telegram_id = _verify_bot_token(body.token, settings.user_bot_token)
-    user = await ensure_customer(db, telegram_id, None)
-    await log_user_activity(db, user_id=user.id, event="auth_login", source="bot_webapp_token")
-    return await _issue_auth_session(db, response, user)
-
-
 @router.post("/telegram/superadmin", response_model=AuthSessionDto)
 async def login_telegram_superadmin(
     body: TelegramLoginRequest,
@@ -271,38 +243,6 @@ async def me(
     return _to_auth_user_dto(user)
 
 
-@router.post("/webapp-user")
-async def webapp_user(
-    db: AsyncSession = Depends(get_db),
-    x_telegram_init_data: str | None = Header(None, alias="X-Telegram-Init-Data"),
-    x_init_data: str | None = Header(None, alias="X-Init-Data"),
-):
-    from app.config import get_settings
-
-    init_data = (x_telegram_init_data or x_init_data or "").strip()
-    if not init_data:
-        logger.warning("webapp-user: no init data header received")
-        raise HTTPException(401, "Missing Telegram WebApp data")
-
-    settings = get_settings()
-    if not settings.user_bot_token:
-        logger.error("webapp-user: MARKET_USER_BOT_TOKEN is not configured")
-        raise HTTPException(503, "MARKET_USER_BOT_TOKEN is not configured")
-
-    tg_user = verify_telegram_init_data(init_data, settings.user_bot_token)
-    if not tg_user:
-        logger.warning("webapp-user: initData validation failed (len=%d)", len(init_data))
-        raise HTTPException(401, "Invalid Telegram init data")
-
-    tid = tg_user.get("id")
-    if tid is None:
-        raise HTTPException(401, "No user id in init data")
-
-    logger.info("webapp-user: authenticated telegram_id=%s", tid)
-    user = await ensure_customer(db, int(tid), tg_user.get("username"))
-    return _to_legacy_user_payload(user)
-
-
 @router.post("/webapp-admin")
 async def webapp_admin(
     db: AsyncSession = Depends(get_db),
@@ -344,19 +284,6 @@ async def webapp_admin(
         raise HTTPException(403, "Нет доступа к магазину")
 
     return AdminWebAppSessionDto(user=_to_user_dto(user), restaurants=restaurants)
-
-
-@router.post("/verify-user-bot-token")
-async def verify_user_bot_token(
-    body: BotTokenRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    from app.config import get_settings
-
-    settings = get_settings()
-    telegram_id = _verify_bot_token(body.token, settings.user_bot_token)
-    user = await ensure_customer(db, telegram_id, None)
-    return _to_legacy_user_payload(user)
 
 
 @router.post("/verify-admin-bot-token")
