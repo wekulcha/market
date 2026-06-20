@@ -2,23 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchAdminUserActivity, fetchAdminUsers } from "../api/admin";
 import { BASE_URL } from "../api/baseUrl";
 import type { AdminUserActivityLog, AdminUserOverview } from "../types/admin";
-
-function formatLogDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
-
-function metadataText(metadata: Record<string, unknown> | null): string {
-  if (!metadata || Object.keys(metadata).length === 0) return "";
-  return JSON.stringify(metadata);
-}
+import { formatMoscowDateTime, metadataText } from "../utils/adminLogs";
 
 export function ToolsPage() {
   const [health, setHealth] = useState<string | null>(null);
@@ -151,7 +135,9 @@ export function ToolsPage() {
               <tbody className="divide-y divide-slate-100">
                 {logs.map((log) => (
                   <tr key={log.id}>
-                    <td className="px-3 py-2 whitespace-nowrap text-slate-500">{formatLogDate(log.createdAt)}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-slate-500">
+                      {formatMoscowDateTime(log.createdAt)}
+                    </td>
                     <td className="px-3 py-2 whitespace-nowrap">{log.source}</td>
                     <td className="px-3 py-2 font-medium text-slate-800">{log.event}</td>
                     <td className="px-3 py-2 font-mono text-[11px] text-slate-500 break-all">

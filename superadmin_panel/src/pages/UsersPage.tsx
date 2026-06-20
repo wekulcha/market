@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { deleteAdminUser, fetchAdminUsers, setUserActive } from "../api/admin";
+import { deleteAdminUser, fetchAdminUserActivity, fetchAdminUsers, setUserActive } from "../api/admin";
 import { ApiError } from "../api/client";
-import type { AdminUserOverview } from "../types/admin";
+import type { AdminUserActivityLog, AdminUserOverview } from "../types/admin";
+import { formatMoscowDateTime, metadataText } from "../utils/adminLogs";
 
 function formatApiFailure(err: unknown): string {
   if (err instanceof ApiError) {
@@ -28,6 +29,10 @@ function formatApiFailure(err: unknown): string {
 export function UsersPage() {
   const [q, setQ] = useState("");
   const [detail, setDetail] = useState<AdminUserOverview | null>(null);
+  const [logsUserId, setLogsUserId] = useState<number | null>(null);
+  const [logs, setLogs] = useState<AdminUserActivityLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsErr, setLogsErr] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { data: users = [], isLoading, error, isError } = useQuery({
     queryKey: ["admin", "users"],
@@ -56,6 +61,32 @@ export function UsersPage() {
       return hay.includes(n);
     });
   }, [users, q]);
+
+  const openDetail = (user: AdminUserOverview) => {
+    setDetail(user);
+    setLogsUserId(null);
+    setLogs([]);
+    setLogsErr(null);
+  };
+
+  const closeDetail = () => {
+    setDetail(null);
+    setLogsUserId(null);
+    setLogs([]);
+    setLogsErr(null);
+  };
+
+  const loadUserLogs = (userId: number) => {
+    setLogsUserId(userId);
+    setLogsLoading(true);
+    setLogsErr(null);
+    void fetchAdminUserActivity(userId)
+      .then(setLogs)
+      .catch((e: unknown) => setLogsErr(formatApiFailure(e)))
+      .finally(() => setLogsLoading(false));
+  };
+
+  const showLogs = detail && logsUserId === detail.id;
 
   return (
     <div className="space-y-3">
@@ -91,7 +122,7 @@ export function UsersPage() {
               return (
                 <tr
                   key={u.id}
-                  onClick={() => setDetail(u)}
+                  onClick={() => openDetail(u)}
                   className="border-t border-slate-100 hover:bg-slate-50/80 cursor-pointer"
                 >
                   <td className="px-2 py-1.5 font-mono text-[11px]">{u.id}</td>
@@ -124,7 +155,7 @@ export function UsersPage() {
       {detail && (
         <div
           className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4"
-          onClick={() => setDetail(null)}
+          onClick={closeDetail}
         >
           <div
             className="bg-white rounded-3xl p-4 w-full max-w-md max-h-[88vh] overflow-y-auto shadow-xl"
@@ -140,7 +171,7 @@ export function UsersPage() {
               <button
                 type="button"
                 className="text-slate-400 hover:text-slate-700 text-lg leading-none"
-                onClick={() => setDetail(null)}
+                onClick={closeDetail}
               >
                 ×
               </button>
@@ -175,6 +206,14 @@ export function UsersPage() {
             <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-slate-100">
               <button
                 type="button"
+                disabled={logsLoading}
+                onClick={() => loadUserLogs(detail.id)}
+                className="flex-1 min-w-[120px] rounded-xl bg-slate-900 px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+              >
+                {showLogs ? "Обновить лог" : "Посмотреть лог"}
+              </button>
+              <button
+                type="button"
                 disabled={toggleMutation.isPending || deleteMutation.isPending}
                 onClick={() =>
                   toggleMutation.mutate({
@@ -199,6 +238,53 @@ export function UsersPage() {
                 Удалить
               </button>
             </div>
+            {showLogs && (
+              <div className="mt-3 rounded-2xl border border-slate-100 overflow-hidden">
+                <div className="flex items-center justify-between gap-2 bg-slate-50 px-3 py-2">
+                  <div>
+                    <div className="text-xs font-semibold text-slate-800">Логи пользователя</div>
+                    <div className="text-[10px] text-slate-500">Время показывается в GMT+3, Москва.</div>
+                  </div>
+                </div>
+                {logsErr && (
+                  <p className="px-3 py-2 text-xs text-red-600" role="alert">
+                    {logsErr}
+                  </p>
+                )}
+                {logsLoading && <p className="px-3 py-3 text-xs text-slate-500">Загружаем логи…</p>}
+                {!logsLoading && !logsErr && logs.length === 0 && (
+                  <p className="px-3 py-3 text-xs text-slate-500">Пока нет событий по этому пользователю.</p>
+                )}
+                {!logsLoading && logs.length > 0 && (
+                  <div className="max-h-72 overflow-auto">
+                    <table className="w-full text-left text-[11px]">
+                      <thead className="sticky top-0 bg-slate-50 text-slate-500">
+                        <tr>
+                          <th className="px-3 py-2 font-semibold">Время</th>
+                          <th className="px-3 py-2 font-semibold">Источник</th>
+                          <th className="px-3 py-2 font-semibold">Событие</th>
+                          <th className="px-3 py-2 font-semibold">Данные</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {logs.map((log) => (
+                          <tr key={log.id}>
+                            <td className="px-3 py-2 whitespace-nowrap text-slate-500">
+                              {formatMoscowDateTime(log.createdAt)}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap">{log.source}</td>
+                            <td className="px-3 py-2 font-medium text-slate-800">{log.event}</td>
+                            <td className="px-3 py-2 font-mono text-[10px] text-slate-500 break-all">
+                              {metadataText(log.metadata)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
