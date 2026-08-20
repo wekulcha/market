@@ -9,21 +9,76 @@
 #   MARKET_SHARED_GATEWAY=true ./deploy/up.sh
 
 market.wekulcha.ru {
-    encode zstd gzip
-    reverse_proxy kulcha-market-user-panel:80
+	encode zstd gzip
+	reverse_proxy kulcha-market-user-panel:80
 }
 
 apimarket.wekulcha.ru {
-    encode zstd gzip
-    reverse_proxy kulcha-market-backend:8000
+	encode zstd gzip
+	reverse_proxy kulcha-market-backend:8000
 }
 
 adminmarket.wekulcha.online {
-    encode zstd gzip
-    reverse_proxy kulcha-market-admin-panel:80
+	encode zstd gzip
+	reverse_proxy kulcha-market-admin-panel:80
 }
 
 supmarket.wekulcha.online {
-    encode zstd gzip
-    reverse_proxy kulcha-market-superadmin-panel:80
+	encode zstd gzip
+	reverse_proxy kulcha-market-superadmin-panel:80
 }
+
+# B2B uses app.wekulcha.ru, which may already be declared by the legacy Kulcha
+# gateway. If it is, MERGE the handlers below into that existing site block;
+# do not create two app.wekulcha.ru blocks. The gateway container must be on the
+# kulcha-market_default network and the b2b profile must be running.
+#
+# app.wekulcha.ru {
+#     encode zstd gzip
+#     header {
+#         Strict-Transport-Security "max-age=31536000; includeSubDomains"
+#         X-Content-Type-Options "nosniff"
+#         Referrer-Policy "strict-origin-when-cross-origin"
+#         Permissions-Policy "camera=(self), microphone=(), geolocation=(self), payment=(self)"
+#         Cross-Origin-Opener-Policy "same-origin-allow-popups"
+#         -Server
+#     }
+#
+#     @buyer_webhook path /webhooks/telegram/buyer
+#     handle @buyer_webhook {
+#         reverse_proxy kulcha-b2b-buyer-bot:8081
+#     }
+#     @seller_webhook path /webhooks/telegram/seller
+#     handle @seller_webhook {
+#         reverse_proxy kulcha-b2b-seller-bot:8082
+#     }
+#     @admin_webhook path /webhooks/telegram/admin
+#     handle @admin_webhook {
+#         reverse_proxy kulcha-b2b-admin-bot:8083
+#     }
+#     @b2b_api_health path /api/health
+#     handle @b2b_api_health {
+#         rewrite * /health
+#         reverse_proxy kulcha-market-backend:8000
+#     }
+#     @b2b_backend_ops path /health /ready /metrics
+#     handle @b2b_backend_ops {
+#         reverse_proxy kulcha-market-backend:8000
+#     }
+#     @b2b_api path /api /api/*
+#     handle @b2b_api {
+#         reverse_proxy kulcha-market-backend:8000
+#     }
+#     @b2b_webhooks path /webhooks /webhooks/*
+#     handle @b2b_webhooks {
+#         reverse_proxy kulcha-market-backend:8000
+#     }
+#     handle_path /b2b-static/* {
+#         reverse_proxy kulcha-b2b-panel:80
+#     }
+#     @b2b_apps path /buyer /buyer/* /seller /seller/* /admin /admin/*
+#     handle @b2b_apps {
+#         reverse_proxy kulcha-b2b-panel:80
+#     }
+#     # Keep the pre-existing legacy fallback after these B2B handlers.
+# }

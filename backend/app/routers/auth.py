@@ -151,7 +151,11 @@ async def login_telegram_user(
     if not settings.user_bot_token:
         raise HTTPException(503, "MARKET_USER_BOT_TOKEN is not configured")
 
-    tg_user = verify_telegram_init_data(init_data, settings.user_bot_token)
+    tg_user = verify_telegram_init_data(
+        init_data,
+        settings.user_bot_token,
+        max_age_seconds=settings.telegram_init_data_max_age_seconds,
+    )
     if not tg_user:
         raise HTTPException(401, "Invalid Telegram init data")
 
@@ -180,7 +184,11 @@ async def login_telegram_superadmin(
     if not settings.superadmin_bot_token:
         raise HTTPException(503, "MARKET_SUPERADMIN_BOT_TOKEN is not configured")
 
-    tg_user = verify_telegram_init_data(init_data, settings.superadmin_bot_token)
+    tg_user = verify_telegram_init_data(
+        init_data,
+        settings.superadmin_bot_token,
+        max_age_seconds=settings.telegram_init_data_max_age_seconds,
+    )
     if not tg_user:
         raise HTTPException(401, "Invalid Telegram init data")
 
@@ -189,7 +197,7 @@ async def login_telegram_superadmin(
         raise HTTPException(401, "No user id in init data")
 
     telegram_id = int(tid)
-    if settings.superadmin_allowed_ids and telegram_id not in settings.superadmin_allowed_ids:
+    if not settings.superadmin_allowed_ids or telegram_id not in settings.superadmin_allowed_ids:
         logger.warning("telegram/superadmin: access denied for telegram_id=%s", telegram_id)
         raise HTTPException(403, "Нет доступа. Ваш Telegram ID не в списке разработчиков.")
 
@@ -261,7 +269,11 @@ async def webapp_admin(
         logger.error("webapp-admin: MARKET_ADMIN_BOT_TOKEN is not configured")
         raise HTTPException(503, "MARKET_ADMIN_BOT_TOKEN is not configured")
 
-    tg_user = verify_telegram_init_data(init_data, settings.admin_bot_token)
+    tg_user = verify_telegram_init_data(
+        init_data,
+        settings.admin_bot_token,
+        max_age_seconds=settings.telegram_init_data_max_age_seconds,
+    )
     if not tg_user:
         logger.warning("webapp-admin: initData validation failed (len=%d)", len(init_data))
         raise HTTPException(401, "Invalid Telegram init data")

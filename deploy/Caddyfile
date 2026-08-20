@@ -1,23 +1,102 @@
 {
-    email {$MARKET_ACME_EMAIL}
+	email {$MARKET_ACME_EMAIL}
+}
+
+(b2b_security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(self), microphone=(), geolocation=(self), payment=(self)"
+		Cross-Origin-Opener-Policy "same-origin-allow-popups"
+		-Server
+	}
 }
 
 {$MARKET_API_DOMAIN} {
-    encode zstd gzip
-    reverse_proxy backend:8000
+	encode zstd gzip
+	reverse_proxy backend:8000
 }
 
 {$MARKET_USER_DOMAIN} {
-    encode zstd gzip
-    reverse_proxy user_panel:80
+	encode zstd gzip
+	reverse_proxy user_panel:80
 }
 
 {$MARKET_ADMIN_DOMAIN} {
-    encode zstd gzip
-    reverse_proxy admin_panel:80
+	encode zstd gzip
+	reverse_proxy admin_panel:80
 }
 
 {$MARKET_SUPERADMIN_DOMAIN} {
-    encode zstd gzip
-    reverse_proxy superadmin_panel:80
+	encode zstd gzip
+	reverse_proxy superadmin_panel:80
+}
+
+{$B2B_DOMAIN} {
+	encode zstd gzip
+	import b2b_security_headers
+
+	# Each production Telegram webhook terminates in its bot container, where
+	# aiogram verifies X-Telegram-Bot-Api-Secret-Token before dispatch.
+	@buyer_webhook path /webhooks/telegram/buyer
+	handle @buyer_webhook {
+		reverse_proxy buyer_bot:8081
+	}
+
+	@seller_webhook path /webhooks/telegram/seller
+	handle @seller_webhook {
+		reverse_proxy seller_bot:8082
+	}
+
+	@admin_webhook path /webhooks/telegram/admin
+	handle @admin_webhook {
+		reverse_proxy b2b_admin_bot:8083
+	}
+
+	# Public liveness alias; API paths otherwise reach backend unchanged.
+	@b2b_api_health path /api/health
+	handle @b2b_api_health {
+		rewrite * /health
+		reverse_proxy backend:8000
+	}
+
+	# Operational endpoints belong to FastAPI and must never fall through to SPA.
+	@b2b_backend_ops path /health /ready /metrics
+	handle @b2b_backend_ops {
+		reverse_proxy backend:8000
+	}
+
+	# API/payment webhook matchers are deliberately handled before SPA fallback.
+	@b2b_api path /api /api/*
+	handle @b2b_api {
+		reverse_proxy backend:8000
+	}
+
+	@b2b_webhooks path /webhooks /webhooks/*
+	handle @b2b_webhooks {
+		reverse_proxy backend:8000
+	}
+
+	@b2b_root path /
+	handle @b2b_root {
+		redir /buyer 302
+	}
+
+	# Keep B2B bundles separate from the legacy app.wekulcha.ru /assets tree.
+	handle_path /b2b-static/* {
+		reverse_proxy b2b_panel:80
+	}
+
+	# One React SPA owns the three role-specific route trees. Passing the path
+	# unchanged lets BrowserRouter handle direct links and nested routes.
+	@b2b_apps path /buyer /buyer/* /seller /seller/* /admin /admin/*
+	handle @b2b_apps {
+		reverse_proxy b2b_panel:80
+	}
+
+	# The final fallback covers manifest/icons without ever catching API routes.
+	handle {
+		reverse_proxy b2b_panel:80
+	}
 }

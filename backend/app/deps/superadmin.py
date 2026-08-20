@@ -15,7 +15,9 @@ async def assert_superadmin(db: AsyncSession, authorization: str | None) -> User
     if not user:
         raise HTTPException(401, "Authorization bearer token is required")
     settings = get_settings()
-    if settings.superadmin_allowed_ids and user.id not in settings.superadmin_allowed_ids:
+    # Fail closed: an empty allowlist is a configuration error, not public
+    # superadmin access.
+    if not settings.superadmin_allowed_ids or user.id not in settings.superadmin_allowed_ids:
         raise HTTPException(403, "Нет доступа. Ваш ID не в списке разработчиков.")
     return user
 

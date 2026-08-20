@@ -1,5 +1,9 @@
 # Kulcha Market Platform
 
+> Новый Telegram-first контур **KULCHA B2B** добавлен рядом с legacy Market и
+> включается Docker Compose profile `b2b`. Полный запуск, seed и E2E описаны в
+> [`B2B_README.md`](B2B_README.md).
+
 Платформа приема заказов для маркета с Telegram-интеграцией:
 
 - клиентский `user_panel` (Mini App);
@@ -60,6 +64,12 @@ docker compose up -d
 ```
 
 Сервисы поднимутся по `docker-compose.yml`: PostgreSQL, backend, 3 панели, 3 бота и Caddy gateway.
+
+Legacy-запуск не включает B2B-сервисы. Для B2B после настройки `.env`:
+
+```bash
+docker compose --profile b2b up -d --build
+```
 
 ## Документация по модулям
 
