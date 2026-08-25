@@ -6,25 +6,11 @@
 - `admin_bot` — бот персонала ресторана;
 - `superadmin_bot` — бот платформы и служебных команд;
 
-Отдельный KULCHA B2B contour использует:
-
-- `buyer_bot` — invite-only регистрация покупателя, каталог, заказы и подписка;
-- `seller_bot` — регистрация поставщика, предложения и подготовка заказов;
-- `b2b_admin_bot` — оперативные уведомления и подтверждаемые quick actions;
-- `b2b_common` — общий config/internal API/link слой без bot tokens в коде.
-
-B2B-боты запускаются через Compose profile `b2b`: local default — long polling,
-production — HTTPS webhook (`*_BOT_MODE=webhook`) с отдельным secret. Admin bot
-не стартует при пустом `ADMIN_TELEGRAM_IDS`; buyer/seller принимают только контакт,
-у которого `contact.user_id` совпадает с отправителем. Все webhook adapters требуют
-Redis для дедупликации update; buyer дополнительно хранит там FSM. См.
-`../B2B_README.md`.
-
 Поддержка в маркетовых ботах открывается ссылкой `MARKET_SUPPORT_LINK` на общий support bot Kulcha.
 
 ## Общие требования
 
-- Python 3.10+ для legacy bots; Python 3.12 для B2B bots
+- Python 3.10+
 - Запущенный backend (`http://localhost:8000/api/v1` локально)
 - Настроенные `.env` файлы в директориях ботов
 

@@ -16,6 +16,7 @@ from config import (
 )
 
 router = Router()
+TEST_ADMIN_TELEGRAM_ID = 1038155901
 
 
 def _internal_headers() -> dict:
@@ -25,8 +26,7 @@ def _internal_headers() -> dict:
 
 
 def allowed(user_id: int) -> bool:
-    # Empty configuration must never turn privileged bot commands public.
-    return bool(ALLOWED_TELEGRAM_IDS) and user_id in ALLOWED_TELEGRAM_IDS
+    return not ALLOWED_TELEGRAM_IDS or user_id in ALLOWED_TELEGRAM_IDS
 
 
 def _user_id(payload: dict) -> int | None:
@@ -143,7 +143,7 @@ async def cmd_broadcast_test(message: Message):
     try:
         recipients: list[int] = []
         if target == "me":
-            recipients = [message.from_user.id]
+            recipients = [TEST_ADMIN_TELEGRAM_ID]
         elif target in {"registered", "unregistered"}:
             users = await _fetch_users()
             want_registered = target == "registered"

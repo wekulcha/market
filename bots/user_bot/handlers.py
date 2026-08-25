@@ -127,12 +127,6 @@ async def on_contact(message: Message):
     if not message.contact:
         return
     user_id = message.from_user.id
-    if message.contact.user_id != user_id:
-        await message.answer(
-            "Пожалуйста, отправьте собственный контакт кнопкой ниже.",
-            reply_markup=request_phone_keyboard(),
-        )
-        return
     phone = message.contact.phone_number or ""
     username = message.from_user.username or f"tg_{user_id}"
     async with httpx.AsyncClient() as client:

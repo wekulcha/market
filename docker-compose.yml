@@ -17,20 +17,6 @@ services:
       timeout: 5s
       retries: 20
 
-  redis:
-    profiles: ["b2b"]
-    image: redis:7-alpine
-    container_name: kulcha-b2b-redis
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
   backend:
     build:
       context: .
@@ -41,45 +27,11 @@ services:
       MARKET_DATABASE_URL: postgresql+asyncpg://${MARKET_POSTGRES_USER:-kulcha_market}:${MARKET_POSTGRES_PASSWORD:-kulcha_market}@postgres:5432/${MARKET_POSTGRES_DB:-kulcha_market}
       MARKET_USER_BOT_TOKEN: ${MARKET_USER_BOT_TOKEN:-}
       MARKET_ADMIN_BOT_TOKEN: ${MARKET_ADMIN_BOT_TOKEN:-}
-      MARKET_B2B_BUYER_BOT_TOKEN: ${BUYER_BOT_TOKEN:-}
-      MARKET_B2B_BUYER_BOT_USERNAME: ${BUYER_BOT_USERNAME:-}
-      MARKET_B2B_SELLER_BOT_TOKEN: ${SELLER_BOT_TOKEN:-}
-      MARKET_B2B_SELLER_BOT_USERNAME: ${SELLER_BOT_USERNAME:-}
-      MARKET_B2B_ADMIN_BOT_TOKEN: ${ADMIN_BOT_TOKEN:-}
-      MARKET_B2B_ADMIN_BOT_USERNAME: ${ADMIN_BOT_USERNAME:-}
-      MARKET_B2B_ADMIN_TELEGRAM_IDS: ${ADMIN_TELEGRAM_IDS:-}
-      MARKET_B2B_APP_NAME: ${APP_NAME:-KULCHA B2B}
-      MARKET_APP_ENV: ${APP_ENV:-development}
-      MARKET_PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
-      MARKET_BUYER_APP_PATH: ${BUYER_APP_PATH:-/buyer}
-      MARKET_SELLER_APP_PATH: ${SELLER_APP_PATH:-/seller}
-      MARKET_B2B_ADMIN_APP_PATH: ${ADMIN_APP_PATH:-/admin}
-      MARKET_TELEGRAM_INIT_DATA_MAX_AGE_SECONDS: ${TELEGRAM_INIT_DATA_MAX_AGE_SECONDS:-3600}
-      MARKET_B2B_INTERNAL_API_SECRET: ${B2B_INTERNAL_API_SECRET:-}
-      MARKET_B2B_SUPPORT_LINK: ${B2B_SUPPORT_URL:-}
-      MARKET_PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-mock}
-      MARKET_PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-}
-      MARKET_SUBSCRIPTION_GRACE_PERIOD_DAYS: ${SUBSCRIPTION_GRACE_PERIOD_DAYS:-0}
-      MARKET_CATALOG_ACCESS_POLICY: ${CATALOG_ACCESS_POLICY:-TEASER}
-      MARKET_RESERVATION_TTL_MINUTES: ${RESERVATION_TTL_MINUTES:-30}
-      MARKET_DEFAULT_CURRENCY: ${DEFAULT_CURRENCY:-RUB}
-      MARKET_APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Moscow}
-      MARKET_ORDER_PAYMENT_METHOD: ${ORDER_PAYMENT_METHOD:-PAY_ON_DELIVERY}
-      MARKET_DELIVERY_PROVIDER: ${DELIVERY_PROVIDER:-manual}
-      MARKET_NOTIFICATION_MAX_ATTEMPTS: ${NOTIFICATION_MAX_ATTEMPTS:-5}
-      MARKET_NOTIFICATION_POLL_SECONDS: ${NOTIFICATION_POLL_SECONDS:-5}
-      MARKET_OBJECT_STORAGE_PROVIDER: ${MARKET_OBJECT_STORAGE_PROVIDER:-local}
-      MARKET_UPLOADS_DIR: /app/uploads
-      MARKET_OFFER_MAX_IMAGES: ${MARKET_OFFER_MAX_IMAGES:-8}
-      MARKET_OFFER_IMAGE_MAX_BYTES: ${MARKET_OFFER_IMAGE_MAX_BYTES:-10485760}
-      B2B_BOOTSTRAP_SUPERADMIN_TELEGRAM_ID: ${B2B_BOOTSTRAP_SUPERADMIN_TELEGRAM_ID:-}
       MARKET_TELEGRAM_PROXY_URL: ${MARKET_TELEGRAM_PROXY_URL:-}
       MARKET_AUTH_ACCESS_SECRET: ${MARKET_AUTH_ACCESS_SECRET:-}
       MARKET_AUTH_ACCESS_TTL_MINUTES: ${MARKET_AUTH_ACCESS_TTL_MINUTES:-15}
       MARKET_AUTH_REFRESH_TTL_DAYS: ${MARKET_AUTH_REFRESH_TTL_DAYS:-30}
-      # `-` preserves the legacy default when unset and permits an explicitly
-      # empty host-only cookie domain for localhost/non-wekulcha dev tunnels.
-      MARKET_AUTH_COOKIE_DOMAIN: ${MARKET_AUTH_COOKIE_DOMAIN-.wekulcha.ru}
+      MARKET_AUTH_COOKIE_DOMAIN: ${MARKET_AUTH_COOKIE_DOMAIN:-.wekulcha.ru}
       MARKET_AUTH_COOKIE_SECURE: ${MARKET_AUTH_COOKIE_SECURE:-true}
       MARKET_SUPERADMIN_BOT_TOKEN: ${MARKET_SUPERADMIN_BOT_TOKEN:-}
       MARKET_SUPERADMIN_ALLOWED_IDS: ${MARKET_SUPERADMIN_ALLOWED_IDS:-}
@@ -93,19 +45,11 @@ services:
       MARKET_OBJECT_STORAGE_ACCESS_KEY_ID: ${MARKET_OBJECT_STORAGE_ACCESS_KEY_ID:-}
       MARKET_OBJECT_STORAGE_SECRET_ACCESS_KEY: ${MARKET_OBJECT_STORAGE_SECRET_ACCESS_KEY:-}
       MARKET_OBJECT_STORAGE_PUBLIC_BASE_URL: ${MARKET_OBJECT_STORAGE_PUBLIC_BASE_URL:-https://kulcha-market-menu-items.storage.yandexcloud.net}
-    volumes:
-      - b2b_uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
     expose:
       - "8000"
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
 
   user_panel:
     build:
@@ -139,162 +83,6 @@ services:
     restart: unless-stopped
     expose:
       - "80"
-
-  b2b_panel:
-    profiles: ["b2b"]
-    build:
-      context: .
-      dockerfile: deploy/docker/b2b_panel.Dockerfile
-      args:
-        VITE_API_URL: ${B2B_PUBLIC_API_URL:-/api}
-        VITE_ASSET_BASE_URL: ${B2B_ASSET_BASE_URL:-/b2b-static/}
-    container_name: kulcha-b2b-panel
-    restart: unless-stopped
-    expose:
-      - "80"
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  buyer_bot:
-    profiles: ["b2b"]
-    build:
-      context: .
-      dockerfile: deploy/docker/buyer_bot.Dockerfile
-    container_name: kulcha-b2b-buyer-bot
-    restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      APP_NAME: ${APP_NAME:-KULCHA B2B}
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
-      BUYER_APP_PATH: ${BUYER_APP_PATH:-/buyer}
-      BUYER_BOT_TOKEN: ${BUYER_BOT_TOKEN:-}
-      BUYER_BOT_USERNAME: ${BUYER_BOT_USERNAME:-}
-      BOT_MODE: ${BUYER_BOT_MODE:-polling}
-      BOT_WEBHOOK_SECRET: ${BUYER_BOT_WEBHOOK_SECRET:-}
-      BOT_WEBHOOK_PORT: 8081
-      B2B_API_BASE: http://backend:8000
-      B2B_INTERNAL_API_SECRET: ${B2B_INTERNAL_API_SECRET:-}
-      B2B_SUPPORT_URL: ${B2B_SUPPORT_URL:-}
-      B2B_TELEGRAM_PROXY_URL: ${B2B_TELEGRAM_PROXY_URL:-}
-      B2B_BOT_REQUEST_TIMEOUT_SECONDS: ${B2B_BOT_REQUEST_TIMEOUT_SECONDS:-15}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-    expose:
-      - "8081"
-    healthcheck:
-      test: ["CMD", "python", "-c", "import os, urllib.request; os.getenv('BOT_MODE', 'polling') != 'webhook' or urllib.request.urlopen('http://127.0.0.1:8081/health', timeout=3)"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  seller_bot:
-    profiles: ["b2b"]
-    build:
-      context: .
-      dockerfile: deploy/docker/seller_bot.Dockerfile
-    container_name: kulcha-b2b-seller-bot
-    restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      APP_NAME: ${APP_NAME:-KULCHA B2B}
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
-      SELLER_APP_PATH: ${SELLER_APP_PATH:-/seller}
-      SELLER_BOT_TOKEN: ${SELLER_BOT_TOKEN:-}
-      SELLER_BOT_USERNAME: ${SELLER_BOT_USERNAME:-}
-      BOT_MODE: ${SELLER_BOT_MODE:-polling}
-      BOT_WEBHOOK_SECRET: ${SELLER_BOT_WEBHOOK_SECRET:-}
-      BOT_WEBHOOK_PORT: 8082
-      B2B_API_BASE: http://backend:8000
-      B2B_INTERNAL_API_SECRET: ${B2B_INTERNAL_API_SECRET:-}
-      B2B_SUPPORT_URL: ${B2B_SUPPORT_URL:-}
-      B2B_TELEGRAM_PROXY_URL: ${B2B_TELEGRAM_PROXY_URL:-}
-      B2B_BOT_REQUEST_TIMEOUT_SECONDS: ${B2B_BOT_REQUEST_TIMEOUT_SECONDS:-15}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-    expose:
-      - "8082"
-    healthcheck:
-      test: ["CMD", "python", "-c", "import os, urllib.request; os.getenv('BOT_MODE', 'polling') != 'webhook' or urllib.request.urlopen('http://127.0.0.1:8082/health', timeout=3)"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  b2b_admin_bot:
-    profiles: ["b2b"]
-    build:
-      context: .
-      dockerfile: deploy/docker/b2b_admin_bot.Dockerfile
-    container_name: kulcha-b2b-admin-bot
-    restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      APP_NAME: ${APP_NAME:-KULCHA B2B}
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
-      ADMIN_APP_PATH: ${ADMIN_APP_PATH:-/admin}
-      ADMIN_BOT_TOKEN: ${ADMIN_BOT_TOKEN:-}
-      ADMIN_BOT_USERNAME: ${ADMIN_BOT_USERNAME:-}
-      ADMIN_TELEGRAM_IDS: ${ADMIN_TELEGRAM_IDS:-}
-      BOT_MODE: ${ADMIN_BOT_MODE:-polling}
-      BOT_WEBHOOK_SECRET: ${ADMIN_BOT_WEBHOOK_SECRET:-}
-      BOT_WEBHOOK_PORT: 8083
-      B2B_API_BASE: http://backend:8000
-      B2B_INTERNAL_API_SECRET: ${B2B_INTERNAL_API_SECRET:-}
-      B2B_SUPPORT_URL: ${B2B_SUPPORT_URL:-}
-      B2B_TELEGRAM_PROXY_URL: ${B2B_TELEGRAM_PROXY_URL:-}
-      B2B_BOT_REQUEST_TIMEOUT_SECONDS: ${B2B_BOT_REQUEST_TIMEOUT_SECONDS:-15}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-    expose:
-      - "8083"
-    healthcheck:
-      test: ["CMD", "python", "-c", "import os, urllib.request; os.getenv('BOT_MODE', 'polling') != 'webhook' or urllib.request.urlopen('http://127.0.0.1:8083/health', timeout=3)"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  notification_worker:
-    profiles: ["b2b"]
-    build:
-      context: .
-      dockerfile: deploy/docker/backend.Dockerfile
-    container_name: kulcha-b2b-notification-worker
-    restart: unless-stopped
-    command: ["python", "-m", "app.workers.notification_worker"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      MARKET_DATABASE_URL: postgresql+asyncpg://${MARKET_POSTGRES_USER:-kulcha_market}:${MARKET_POSTGRES_PASSWORD:-kulcha_market}@postgres:5432/${MARKET_POSTGRES_DB:-kulcha_market}
-      MARKET_APP_ENV: ${APP_ENV:-development}
-      MARKET_PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
-      MARKET_BUYER_APP_PATH: ${BUYER_APP_PATH:-/buyer}
-      MARKET_SELLER_APP_PATH: ${SELLER_APP_PATH:-/seller}
-      MARKET_B2B_ADMIN_APP_PATH: ${ADMIN_APP_PATH:-/admin}
-      MARKET_B2B_BUYER_BOT_TOKEN: ${BUYER_BOT_TOKEN:-}
-      MARKET_B2B_BUYER_BOT_USERNAME: ${BUYER_BOT_USERNAME:-}
-      MARKET_B2B_SELLER_BOT_TOKEN: ${SELLER_BOT_TOKEN:-}
-      MARKET_B2B_SELLER_BOT_USERNAME: ${SELLER_BOT_USERNAME:-}
-      MARKET_B2B_ADMIN_BOT_TOKEN: ${ADMIN_BOT_TOKEN:-}
-      MARKET_B2B_ADMIN_BOT_USERNAME: ${ADMIN_BOT_USERNAME:-}
-      MARKET_B2B_ADMIN_TELEGRAM_IDS: ${ADMIN_TELEGRAM_IDS:-}
-      MARKET_B2B_INTERNAL_API_SECRET: ${B2B_INTERNAL_API_SECRET:-}
-      MARKET_B2B_SUPPORT_LINK: ${B2B_SUPPORT_URL:-}
-      MARKET_TELEGRAM_PROXY_URL: ${B2B_TELEGRAM_PROXY_URL:-}
-      MARKET_APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Moscow}
-      MARKET_NOTIFICATION_MAX_ATTEMPTS: ${NOTIFICATION_MAX_ATTEMPTS:-5}
-      MARKET_NOTIFICATION_POLL_SECONDS: ${NOTIFICATION_POLL_SECONDS:-5}
 
   user_bot:
     build:
@@ -364,7 +152,6 @@ services:
       MARKET_USER_DOMAIN: ${MARKET_USER_DOMAIN:-market.wekulcha.ru}
       MARKET_ADMIN_DOMAIN: ${MARKET_ADMIN_DOMAIN:-adminmarket.wekulcha.online}
       MARKET_SUPERADMIN_DOMAIN: ${MARKET_SUPERADMIN_DOMAIN:-supmarket.wekulcha.online}
-      B2B_DOMAIN: ${B2B_DOMAIN:-app.wekulcha.ru}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -372,7 +159,5 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
-  b2b_uploads_data:
   caddy_data:
   caddy_config:

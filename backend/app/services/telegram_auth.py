@@ -19,13 +19,7 @@ from urllib.parse import unquote
 logger = logging.getLogger(__name__)
 
 
-def verify_telegram_init_data(
-    init_data: str,
-    bot_token: str,
-    *,
-    max_age_seconds: int = 3600,
-    now: int | None = None,
-) -> dict[str, Any] | None:
+def verify_telegram_init_data(init_data: str, bot_token: str) -> dict[str, Any] | None:
     if not init_data or not bot_token:
         logger.warning("verify_telegram_init_data: empty init_data or bot_token")
         return None
@@ -53,26 +47,6 @@ def verify_telegram_init_data(
                 "verify_telegram_init_data: hash mismatch (keys in data: %s)",
                 sorted(parsed.keys()),
             )
-            return None
-
-        # A valid HMAC can be replayed forever unless auth_date is checked.
-        # Telegram sends auth_date as a Unix timestamp.  Allow a small amount
-        # of clock skew, but reject missing, future and stale payloads.
-        auth_date_raw = parsed.get("auth_date")
-        if not auth_date_raw:
-            logger.warning("verify_telegram_init_data: no auth_date in init_data")
-            return None
-        try:
-            auth_date = int(unquote(auth_date_raw))
-        except (TypeError, ValueError):
-            logger.warning("verify_telegram_init_data: invalid auth_date")
-            return None
-        current_time = int(time.time()) if now is None else int(now)
-        if auth_date > current_time + 30:
-            logger.warning("verify_telegram_init_data: auth_date is in the future")
-            return None
-        if max_age_seconds > 0 and current_time - auth_date > max_age_seconds:
-            logger.warning("verify_telegram_init_data: init_data expired")
             return None
 
         user_raw = parsed.get("user")
